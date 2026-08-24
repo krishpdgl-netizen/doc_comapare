@@ -2,8 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="DiffIQ"/>
+<meta name="application-name" content="DiffIQ"/>
+<meta name="theme-color" content="#0d1117"/>
+<meta name="description" content="Detect, visualize and understand every meaningful change between document versions."/>
 <title>DiffIQ — Document Change Intelligence</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png"/>
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png"/>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png"/>
+<link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png"/>
+<link rel="apple-touch-startup-image" href="icons/icon-512.png"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -827,5 +841,87 @@ document.addEventListener('keydown',e=>{
   if(e.key==='ArrowUp'&&S.active){ $('btn-prev').click(); }
 });
 </script>
+
+<div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;padding:12px 20px;background:#1c2333;border-top:1px solid #2a3347;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:9999;font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif">
+  <div style="display:flex;align-items:center;gap:10px">
+    <img src="icons/icon-72.png" style="width:32px;height:32px;border-radius:6px"/>
+    <div>
+      <div style="font-size:13px;font-weight:600;color:#e2e8f5">Install DiffIQ</div>
+      <div style="font-size:11px;color:#8892a8">Add to home screen for offline access</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0">
+    <button id="install-dismiss" style="padding:6px 14px;border-radius:6px;border:1px solid #3d4f70;background:transparent;color:#8892a8;font-size:12px;cursor:pointer;font-family:inherit">Not now</button>
+    <button id="install-btn" style="padding:6px 14px;border-radius:6px;border:none;background:#3b82f6;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Install</button>
+  </div>
+</div>
+
+<div id="offline-toast" style="display:none;position:fixed;bottom:20px;right:20px;padding:10px 16px;background:#1c2333;border:1px solid #2a3347;border-radius:8px;font-size:12px;color:#e2e8f5;z-index:9999;font-family:-apple-system,sans-serif;display:flex;align-items:center;gap:8px">
+  <span style="color:#f59e0b;font-size:14px">⚡</span> Offline mode — all features available
+</div>
+
+<script>
+// ── Service Worker ──────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      console.log('[DiffIQ] SW registered', reg.scope);
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            showUpdateToast();
+          }
+        });
+      });
+    }).catch(e => console.warn('[DiffIQ] SW registration failed:', e));
+  });
+}
+
+// ── Offline detection ───────────────────────────────────────────
+function showOfflineToast() {
+  const t = document.getElementById('offline-toast');
+  if (t) { t.style.display = 'flex'; setTimeout(() => t.style.display = 'none', 3500); }
+}
+window.addEventListener('offline', showOfflineToast);
+if (!navigator.onLine) showOfflineToast();
+
+// ── Install prompt ──────────────────────────────────────────────
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.style.display = 'flex';
+});
+
+document.getElementById('install-btn')?.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('install-banner').style.display = 'none';
+  if (outcome === 'accepted') console.log('[DiffIQ] App installed');
+});
+
+document.getElementById('install-dismiss')?.addEventListener('click', () => {
+  document.getElementById('install-banner').style.display = 'none';
+  sessionStorage.setItem('install-dismissed', '1');
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-banner').style.display = 'none';
+  console.log('[DiffIQ] App installed via prompt');
+});
+
+// ── Update toast ─────────────────────────────────────────────────
+function showUpdateToast() {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:10px 16px;background:#1c2333;border:1px solid #2a3347;border-radius:8px;font-size:12px;color:#e2e8f5;z-index:9999;font-family:-apple-system,sans-serif;display:flex;align-items:center;gap:10px';
+  t.innerHTML = '<span style="color:#3b82f6">↻</span> Update available — <button onclick="location.reload()" style="background:none;border:none;color:#3b82f6;cursor:pointer;font-size:12px;padding:0;font-family:inherit;font-weight:600">Reload</button>';
+  document.body.appendChild(t);
+}
+</script>
+
 </body>
 </html>
