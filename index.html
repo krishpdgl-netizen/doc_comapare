@@ -12,15 +12,14 @@
 <meta name="description" content="Detect, visualize and understand every meaningful change between document versions."/>
 <title>DiffIQ — Document Change Intelligence</title>
 <link rel="manifest" href="manifest.json"/>
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png"/>
-<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png"/>
-<link rel="apple-touch-icon" href="icons/icon-192.png"/>
-<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png"/>
-<link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png"/>
-<link rel="apple-touch-startup-image" href="icons/icon-512.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png"/>
+<link rel="apple-touch-icon" sizes="144x144" href="icon-144.png"/>
+<link rel="apple-touch-startup-image" href="icon-512.png"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs" type="module" id="pdfjs-script"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -507,9 +506,7 @@ async function extractContent(file){
         const page=await pdfDoc.getPage(p);
         const tc=await page.getTextContent();
         const pageText=tc.items.map(i=>i.str).join(' ');
-        fullText+=pageText+'
-
-';
+        fullText+=pageText+'\n\n';
       }
       return{type:'pdf',text:fullText.trim(),html:null,pdfDoc,pageCount};
     }catch(e){
@@ -523,6 +520,26 @@ async function extractContent(file){
     return{type:'text',text,html:null};
   }catch(e){
     return{type:'text',text:'[Could not read file: '+file.name+']',html:null};
+  }
+}
+
+async function extractPdfContent(file){
+  try{
+    const buf=await readAsArrayBuffer(file);
+    const uint=new Uint8Array(buf);
+    const pdfDoc=await window.pdfjsLib.getDocument({data:uint}).promise;
+    let fullText='';
+    const pageCount=pdfDoc.numPages;
+    for(let p=1;p<=pageCount;p++){
+      const page=await pdfDoc.getPage(p);
+      const tc=await page.getTextContent();
+      const pageText=tc.items.map(i=>i.str).join(' ');
+      fullText+=pageText+'\n\n';
+    }
+    return{type:'pdf',text:fullText.trim(),html:null,pdfDoc,pageCount};
+  }catch(e){
+    console.warn('PDF extraction error',e);
+    return{type:'text',text:'[PDF could not be read: '+e.message+']',html:null};
   }
 }
 
@@ -852,15 +869,21 @@ async function renderPdfPane(container, pdfDoc, pageCount, sentences, byIdx, sid
   const wrap=document.createElement('div');
   wrap.className='pdf-canvas-wrap';
   container.appendChild(wrap);
-  const scale=1.5;
-  for(let p=1;p<=pageCount;p++){
-    const page=await pdfDoc.getPage(p);
-    const vp=page.getViewport({scale});
-    const canvas=document.createElement('canvas');
-    canvas.width=vp.width; canvas.height=vp.height;
-    canvas.style.maxWidth='100%';
-    wrap.appendChild(canvas);
-    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+  if(!pdfDoc){
+    wrap.innerHTML='<div style="color:#aaa;padding:20px;font-size:12px">PDF preview unavailable</div>';
+    return;
+  }
+  const scale=1.4;
+  for(let p=1;p<=Math.min(pageCount,20);p++){
+    try{
+      const page=await pdfDoc.getPage(p);
+      const vp=page.getViewport({scale});
+      const canvas=document.createElement('canvas');
+      canvas.width=vp.width; canvas.height=vp.height;
+      canvas.style.maxWidth='100%';
+      wrap.appendChild(canvas);
+      await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+    }catch(e){ console.warn('page render error',e); }
   }
 }
 
@@ -1014,7 +1037,7 @@ document.addEventListener('keydown',e=>{
 
 <div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;padding:12px 20px;background:#1c2333;border-top:1px solid #2a3347;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:9999;font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif">
   <div style="display:flex;align-items:center;gap:10px">
-    <img src="icons/icon-72.png" style="width:32px;height:32px;border-radius:6px"/>
+    <img src="icon-72.png" style="width:32px;height:32px;border-radius:6px"/>
     <div>
       <div style="font-size:13px;font-weight:600;color:#e2e8f5">Install DiffIQ</div>
       <div style="font-size:11px;color:#8892a8">Add to home screen for offline access</div>
