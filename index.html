@@ -157,6 +157,7 @@ button,input{font-family:inherit}
 .cb-del{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
 .cb-mod{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
 .cb-mov{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bd)}
+.cb-ren{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
 .csev{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:auto;text-transform:uppercase;letter-spacing:.03em}
 .cs-low{background:var(--card);color:var(--text3)}
 .cs-med{background:var(--amber-bg);color:var(--amber)}
@@ -203,6 +204,7 @@ button,input{font-family:inherit}
 .hl-del{background:rgba(239,68,68,.18)!important;border-left:3px solid #ef4444!important;padding-left:8px!important;border-radius:0 3px 3px 0!important;cursor:pointer}
 .hl-mod{background:rgba(245,158,11,.18)!important;border-left:3px solid #f59e0b!important;padding-left:8px!important;border-radius:0 3px 3px 0!important;cursor:pointer}
 .hl-mov{background:rgba(167,139,250,.18)!important;border-left:3px solid #a78bfa!important;padding-left:8px!important;border-radius:0 3px 3px 0!important;cursor:pointer}
+.hl-renumbered{background:rgba(59,130,246,.12)!important;border-left:3px solid #3b82f6!important;padding-left:8px!important;border-radius:0 3px 3px 0!important;cursor:pointer}
 .focus-ring{outline:2px solid #3b82f6!important;outline-offset:2px!important;border-radius:3px!important}
 mark.rm{background:rgba(239,68,68,.22);color:#b91c1c;border-radius:2px;padding:0 1px}
 mark.ad{background:rgba(34,197,94,.22);color:#15803d;border-radius:2px;padding:0 1px}
@@ -480,18 +482,23 @@ function buildStructuredBlocks(root){
     return (el.innerText||el.textContent||'').trim().length>0;
   });
   let section='';
-  const tableIds=new Map();let nextTable=0;
+  const tables=[...root.querySelectorAll('table')],tableIds=new Map(tables.map((t,i)=>[t,i]));
   return all.map((el,index)=>{
     const type=blockTypeFor(el),text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();
     if(type==='heading')section=text;
-    let table=null,row=null,col=null;
+    let table=null,row=null,col=null,rowKey='',colKey='',tableKey='';
     if(type==='table_cell'){
-      const t=el.closest('table'); if(t&&!tableIds.has(t))tableIds.set(t,nextTable++); table=t?tableIds.get(t):null;
-      const tr=el.closest('tr'); row=tr?[...tr.parentElement.children].filter(x=>x.tagName==='TR').indexOf(tr):null;
-      col=tr?[...tr.children].indexOf(el):null;
+      const t=el.closest('table');table=t?tableIds.get(t):null;
+      const rows=t?[...t.querySelectorAll('tr')]:[],tr=el.closest('tr');row=tr?rows.indexOf(tr):null;
+      const cells=tr?[...tr.children].filter(x=>/^(TD|TH)$/.test(x.tagName)):[];col=tr?cells.indexOf(el):null;
+      const firstCell=cells[0],headerCells=rows[0]?[...rows[0].children].filter(x=>/^(TD|TH)$/.test(x.tagName)):[];
+      rowKey=normalizeBlockText((firstCell?.innerText||firstCell?.textContent||'').trim());
+      colKey=normalizeBlockText((headerCells[col]?.innerText||headerCells[col]?.textContent||'').trim());
+      tableKey='table:'+table;
     }
     el.dataset.diffiqBlock=String(index);
-    return{index,type,text,norm:normalizeBlockText(text,type),section,table,row,col};
+    return{index,type,text,norm:normalizeBlockText(text,type),section,table,row,col,rowKey,colKey,tableKey,
+      semanticKey:type==='table_cell'?`${tableKey}|${rowKey}|c${col}`:''};
   });
 }
 
@@ -580,7 +587,12 @@ function parseCsv(text){
 }
 
 // ── Diff engine ───────────────────────────────────────────────
-function tokenize(t){return t.split(/(\s+|[^\w\s]+)/).filter(x=>x.length);}
+function tokenize(t){
+  // Keep business-critical values atomic so Indian currency/date changes are not
+  // fragmented into pieces such as "52 00" and "61 50".
+  const re=/(\s+|(?:₹|\$|£|€)\s*[\d,]+(?:\.\d+)?(?:\s*(?:lakh|lac|crore|cr|million|billion|k))?|\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4}\b|\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}\b|\b\d{4}[\/\-]\d{2}[\/\-]\d{2}\b|\b[\d,]+(?:\.\d+)?%|\b[\d,]+(?:\.\d+)?(?:\s*(?:days?|business\s+days?|months?|years?|hours?|hrs?|minutes?|mins?))?\b|[A-Za-zÀ-ÖØ-öø-ÿ]+(?:['’][A-Za-zÀ-ÖØ-öø-ÿ]+)?|[^\w\s])/gi;
+  return String(t||'').match(re)||[];
+}
 function jaccard(a,b){
   const sa=new Set(a.toLowerCase().split(/\s+/));
   const sb=new Set(b.toLowerCase().split(/\s+/));
@@ -619,17 +631,22 @@ function splitSents(t){
   return t.replace(/\r\n/g,'\n').split(/(?<=[.!?\n])\s+/).map(s=>s.trim()).filter(Boolean);
 }
 function classify(o,n){
-  const numRe=/[\$\u20b9\u00a3\u20ac]?\s*[\d,]+(?:\.\d+)?(?:\s*(?:lakh|crore|million|billion|k|%|days?|months?|years?|hours?|hrs?))?/gi;
+  const numRe=/(?:₹|\$|£|€)?\s*[\d,]+(?:\.\d+)?(?:\s*(?:lakh|lac|crore|cr|million|billion|k|%|days?|business\s+days?|months?|years?|hours?|hrs?))?/gi;
   const dateRe=/\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}\b|\b\d{4}[\/\-]\d{2}[\/\-]\d{2}\b|\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4}\b/gi;
   const fin=/payment|price|cost|fee|penalty|liability|value|amount|contract|revenue|salary|bonus|rate|invoice|commercial/i;
   const leg=/\b(shall|must|may|obligation|terminat|notice|indemnif|warrant|liable|liability|breach|default|confidential|compliance)\b/i;
   const security=/security|data protection|encryption|incident|penetration test|business continuity|disaster recovery/i;
   const cats=[],on=(o.match(numRe)||[]).join('|'),nn=(n.match(numRe)||[]).join('|'),od=(o.match(dateRe)||[]).join('|'),nd=(n.match(dateRe)||[]).join('|');
   if(on!==nn)cats.push('numeric');if(od!==nd)cats.push('date');if(fin.test(o)||fin.test(n))cats.push('financial');if(leg.test(o)||leg.test(n))cats.push('legal');if(security.test(o)||security.test(n))cats.push('security');
-  const sim=jaccard(o,n);let sev='low';
+  const sim=jaccard(o,n),modal=x=>((x.match(/\b(shall|must|may|will)\b/i)||[])[1]||'').toLowerCase();
+  const modalChanged=modal(o)!==modal(n)&&(modal(o)||modal(n));
+  const negChanged=/\b(not|never|no)\b/i.test(o)!==/\b(not|never|no)\b/i.test(n);
+  let sev='low';
   if(!o||!n)sev=(cats.includes('legal')||cats.includes('financial')||cats.includes('security'))?'high':'medium';
+  else if(negChanged)sev='critical';
+  else if(modalChanged&&cats.includes('legal'))sev='high';
   else if(cats.includes('financial')&&cats.includes('numeric'))sev='high';
-  else if(cats.includes('legal')&&(cats.includes('numeric')||cats.includes('date')||/\b(shall|must|may)\b/i.test(o+' '+n)))sev='high';
+  else if(cats.includes('legal')&&(cats.includes('numeric')||cats.includes('date')))sev='high';
   else if(cats.includes('security')&&(cats.includes('numeric')||cats.includes('date')))sev='high';
   else if(cats.includes('numeric')||cats.includes('date'))sev='medium';
   else if(sim<0.35)sev='medium';
@@ -639,11 +656,17 @@ function classify(o,n){
 function blockSimilarity(a,b){
   if(!a||!b)return 0;
   if(a.type!==b.type && !(a.type==='paragraph'&&b.type==='list_item') && !(a.type==='list_item'&&b.type==='paragraph'))return 0;
-  if(a.type==='table_cell'&&b.type==='table_cell'&&a.table===b.table&&a.row===b.row&&a.col===b.col){
-    return Math.max(.72,jaccard(a.text,b.text));
+  if(a.type==='table_cell'&&b.type==='table_cell'){
+    // Never globally fuzzy-match values from unrelated table rows. A date in
+    // "Effective Date" must not be paired with a milestone date just because
+    // both happen to look like dates.
+    if(a.table!==b.table||a.col!==b.col)return 0;
+    if(a.semanticKey&&b.semanticKey&&a.semanticKey===b.semanticKey)return Math.max(.96,jaccard(a.text,b.text));
+    if(a.rowKey&&b.rowKey&&a.rowKey!==b.rowKey)return 0;
+    if(a.row===b.row)return Math.max(.72,jaccard(a.text,b.text));
+    return 0;
   }
-  const jac=jaccard(a.norm,b.norm);
-  const aa=a.norm,bb=b.norm;
+  const jac=jaccard(a.norm,b.norm),aa=a.norm,bb=b.norm;
   if(!aa&&!bb)return 1;if(!aa||!bb)return 0;
   let prefix=0,lim=Math.min(aa.length,bb.length,80);while(prefix<lim&&aa[prefix]===bb[prefix])prefix++;
   const pre=lim?prefix/lim:0;
@@ -656,8 +679,12 @@ function matchThreshold(type){
   if(type==='table_cell')return sens==='semantic'?.28:sens==='strict'?.58:.40;
   return sens==='semantic'?.30:sens==='strict'?.62:.42;
 }
+function blockExactKey(b){
+  if(b?.type==='table_cell')return `table_cell|${b.semanticKey||('t'+b.table+'|r'+b.row+'|c'+b.col)}|${b.norm}`;
+  return (b?.type||'')+'|'+(b?.norm||'');
+}
 function lcsBlockPairs(oldBlocks,newBlocks){
-  const a=oldBlocks.map(b=>b.type+'|'+b.norm),b=newBlocks.map(x=>x.type+'|'+x.norm);
+  const a=oldBlocks.map(blockExactKey),b=newBlocks.map(blockExactKey);
   if(a.length*b.length<=1500000)return lcs(a,b);
   // Memory-safe fallback for very large documents: greedy exact anchors.
   const positions=new Map();b.forEach((k,j)=>{if(!positions.has(k))positions.set(k,[]);positions.get(k).push(j);});
@@ -671,31 +698,53 @@ function lcsBlockPairs(oldBlocks,newBlocks){
 function makeBlockChange(id,type,o,n,oi,ni,simOverride){
   const ot=o?.text||'',nt=n?.text||'',cl=classify(ot,nt);
   const ot2=tokenize(ot),nt2=tokenize(nt),L=lcs(ot2,nt2),lo=new Set(L.map(([a])=>a)),ln=new Set(L.map(([,b])=>b));
+  const similarity=simOverride!==undefined?Math.round(simOverride*100):cl.sim;
+  const confidence=(type==='added'||type==='deleted'||type==='moved'||type==='renumbered')?100:Math.max(60,Math.min(99,Math.round(65+similarity*.34)));
   return{id,type,oldText:ot,newText:nt,oldIdx:oi,newIdx:ni,oldBlockIdx:oi,newBlockIdx:ni,
     section:n?.section||o?.section||'',blockType:n?.type||o?.type||'paragraph',
-    table:n?.table??o?.table,row:n?.row??o?.row,col:n?.col??o?.col,slide:n?.slide??o?.slide,page:n?.page??o?.page,
-    ...cl,sim:simOverride!==undefined?Math.round(simOverride*100):cl.sim,
+    table:n?.table??o?.table,row:n?.row??o?.row,col:n?.col??o?.col,rowKey:n?.rowKey||o?.rowKey||'',colKey:n?.colKey||o?.colKey||'',slide:n?.slide??o?.slide,page:n?.page??o?.page,
+    ...cl,sim:similarity,confidence,
     rmText:type==='added'?'':formatChangedTokens(ot2.filter((_,k)=>!lo.has(k))),
     addText:type==='deleted'?'':formatChangedTokens(nt2.filter((_,k)=>!ln.has(k)))};
 }
 function diffBlocks(oldBlocks,newBlocks){
   oldBlocks=oldBlocks||[];newBlocks=newBlocks||[];const changes=[];let id=1;
   const exact=lcsBlockPairs(oldBlocks,newBlocks),matchedO=new Set(exact.map(x=>x[0])),matchedN=new Set(exact.map(x=>x[1]));
+
+  // Headings can be semantically identical while their numbering changes. Keep
+  // these out of "moved" noise and report the actual metadata change.
+  for(const[i,j]of exact){
+    const o=oldBlocks[i],n=newBlocks[j];
+    if(o.type==='heading'&&n.type==='heading'&&o.norm===n.norm&&o.text!==n.text){
+      const ch=makeBlockChange(id++,'renumbered',o,n,i,j,1);ch.sev='low';ch.cats=[...(ch.cats||[]),'structure'];changes.push(ch);
+    }
+  }
+
   // Exact blocks outside the LCS are true moves/reorders, not delete+add.
   const newByKey=new Map();
-  newBlocks.forEach((b,j)=>{if(matchedN.has(j))return;const k=b.type+'|'+b.norm;if(!newByKey.has(k))newByKey.set(k,[]);newByKey.get(k).push(j);});
+  newBlocks.forEach((b,j)=>{if(matchedN.has(j)||b.type==='table_cell')return;const k=blockExactKey(b);if(!newByKey.has(k))newByKey.set(k,[]);newByKey.get(k).push(j);});
   for(let i=0;i<oldBlocks.length;i++){
-    if(matchedO.has(i))continue;const o=oldBlocks[i],k=o.type+'|'+o.norm,arr=newByKey.get(k);
+    if(matchedO.has(i))continue;const o=oldBlocks[i];if(o.type==='table_cell')continue;const k=blockExactKey(o),arr=newByKey.get(k);
     if(arr?.length){const j=arr.shift();matchedO.add(i);matchedN.add(j);changes.push(makeBlockChange(id++,'moved',o,newBlocks[j],i,j,1));}
   }
-  // Fuzzy modified pairing; score all viable unmatched pairs, then greedily take best.
+
+  // Table values are paired by table + stable row label + column before any
+  // fuzzy matching. This fixes cross-row date/amount mismatches.
+  const newTableBySemantic=new Map();
+  newBlocks.forEach((b,j)=>{if(matchedN.has(j)||b.type!=='table_cell'||!b.semanticKey)return;if(!newTableBySemantic.has(b.semanticKey))newTableBySemantic.set(b.semanticKey,[]);newTableBySemantic.get(b.semanticKey).push(j);});
+  for(let i=0;i<oldBlocks.length;i++){
+    const o=oldBlocks[i];if(matchedO.has(i)||o.type!=='table_cell'||!o.semanticKey)continue;
+    const arr=newTableBySemantic.get(o.semanticKey);if(!arr?.length)continue;
+    const j=arr.shift(),n=newBlocks[j];matchedO.add(i);matchedN.add(j);
+    if(o.text!==n.text)changes.push(makeBlockChange(id++,'modified',o,n,i,j,blockSimilarity(o,n)));
+  }
+
+  // Fuzzy modified pairing for remaining non-table blocks (and only safely
+  // constrained table cells via blockSimilarity).
   const candidates=[];
   for(let i=0;i<oldBlocks.length;i++)if(!matchedO.has(i)){
     for(let j=0;j<newBlocks.length;j++)if(!matchedN.has(j)){
-      const o=oldBlocks[i],n=newBlocks[j];
-      // Stable coordinates are strong anchors for tables/slides.
-      let score=blockSimilarity(o,n);
-      if(o.type==='table_cell'&&n.type==='table_cell'&&o.table===n.table&&o.row===n.row&&o.col===n.col)score=Math.max(score,.8);
+      const o=oldBlocks[i],n=newBlocks[j];let score=blockSimilarity(o,n);
       if(o.type==='slide'&&n.type==='slide'&&o.slide===n.slide)score=Math.max(score,.65);
       if(score>=matchThreshold(o.type))candidates.push({i,j,score});
     }
@@ -707,11 +756,8 @@ function diffBlocks(oldBlocks,newBlocks){
   }
   for(let i=0;i<oldBlocks.length;i++)if(!matchedO.has(i))changes.push(makeBlockChange(id++,'deleted',oldBlocks[i],null,i,-1,0));
   for(let j=0;j<newBlocks.length;j++)if(!matchedN.has(j))changes.push(makeBlockChange(id++,'added',null,newBlocks[j],-1,j,0));
-  changes.sort((a,b)=>{
-    const ap=a.newIdx>=0?a.newIdx:a.oldIdx,bp=b.newIdx>=0?b.newIdx:b.oldIdx;return ap-bp||a.id-b.id;
-  });
-  changes.forEach((c,k)=>c.id=k+1);
-  return changes;
+  changes.sort((a,b)=>{const ap=a.newIdx>=0?a.newIdx:a.oldIdx,bp=b.newIdx>=0?b.newIdx:b.oldIdx;return ap-bp||a.id-b.id;});
+  changes.forEach((c,k)=>c.id=k+1);return changes;
 }
 
 function diffTexts(ot,nt){
@@ -885,7 +931,7 @@ function buildViewer(){
   if(cnt.high)mr.innerHTML+=`<span class="mpill mp-hi">${cnt.high} high impact</span>`;
   // filters
   const fr=$('filter-row');fr.innerHTML='';
-  [['all','All'],['added','Added'],['deleted','Deleted'],['modified','Modified'],['moved','Moved'],['numeric','Numeric'],['date','Dates'],['financial','Financial'],['legal','Legal'],['formula','Formula'],['high_impact','High impact']].forEach(([f,l])=>{
+  [['all','All'],['added','Added'],['deleted','Deleted'],['modified','Modified'],['moved','Moved'],['renumbered','Renumbered'],['numeric','Numeric'],['date','Dates'],['financial','Financial'],['legal','Legal'],['formula','Formula'],['high_impact','High impact']].forEach(([f,l])=>{
     const b=document.createElement('div');b.className='fc'+(f==='all'?' on':'');b.dataset.f=f;b.textContent=l;
     b.addEventListener('click',()=>{S.filter=f;fr.querySelectorAll('.fc').forEach(x=>x.classList.toggle('on',x.dataset.f===f));renderList();});
     fr.appendChild(b);
@@ -1133,7 +1179,7 @@ function renderList(){
   });
   const cl=$('change-list');cl.innerHTML='';
   if(!S.filtered.length){cl.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">No changes match</div>';return;}
-  const cbM={added:'cb-add',deleted:'cb-del',modified:'cb-mod',moved:'cb-mov'};
+  const cbM={added:'cb-add',deleted:'cb-del',modified:'cb-mod',moved:'cb-mov',renumbered:'cb-ren'};
   const csM={low:'cs-low',medium:'cs-med',high:'cs-high',critical:'cs-crit'};
   S.filtered.forEach(c=>{
     const d=document.createElement('div');
@@ -1164,14 +1210,13 @@ function focusElementInPane(side,id,ch,behavior='auto'){
   let el=pane.querySelector(`[data-id="${id}"]`);
   const blockKey=side==='old'?'oldBlockIdx':'newBlockIdx';
   if(!el&&ch&&ch[blockKey]>=0)el=pane.querySelector(`[data-diffiq-block="${ch[blockKey]}"]`);
-  if(!el&&ch?.sheet){
-    el=pane.querySelector(`[data-sheet="${CSS.escape(ch.sheet)}"][data-row="${ch.row}"][data-col="${ch.col}"]`);
-  }
+  if(!el&&ch?.sheet)el=pane.querySelector(`[data-sheet="${CSS.escape(ch.sheet)}"][data-row="${ch.row}"][data-col="${ch.col}"]`);
   if(!el)return false;
   el.classList.add('focus-ring');
-  // Scroll the pane itself instead of the document/window. This is deterministic
-  // even when both panes have different heights.
-  const target=Math.max(0,el.offsetTop-(pane.clientHeight/2)+(el.offsetHeight/2));
+  // offsetTop is unreliable for nested table cells because their offset parent
+  // may be a row/table. Calculate the target from live rectangles instead.
+  const pr=pane.getBoundingClientRect(),er=el.getBoundingClientRect();
+  const target=Math.max(0,pane.scrollTop+(er.top-pr.top)-(pane.clientHeight/2)+(er.height/2));
   pane.scrollTo({top:target,behavior});
   return true;
 }
@@ -1194,8 +1239,8 @@ function setActive(id){
   S.isNavigating=true;
   let oldFound=focusElementInPane('old',id,ch,'auto');
   let newFound=focusElementInPane('new',id,ch,'auto');
-  if(!oldFound){const bi=nearestCounterpartBlock('old',ch);if(bi!==null){const el=$('pane-old').querySelector(`[data-diffiq-block="${bi}"]`);if(el){el.classList.add('focus-ring');$('pane-old').scrollTop=Math.max(0,el.offsetTop-$('pane-old').clientHeight/2);}}}
-  if(!newFound){const bi=nearestCounterpartBlock('new',ch);if(bi!==null){const el=$('pane-new').querySelector(`[data-diffiq-block="${bi}"]`);if(el){el.classList.add('focus-ring');$('pane-new').scrollTop=Math.max(0,el.offsetTop-$('pane-new').clientHeight/2);}}}
+  if(!oldFound){const bi=nearestCounterpartBlock('old',ch);if(bi!==null)focusElementInPane('old',-999,{oldBlockIdx:bi},'auto');}
+  if(!newFound){const bi=nearestCounterpartBlock('new',ch);if(bi!==null)focusElementInPane('new',-999,{newBlockIdx:bi},'auto');}
   const listItem=$('change-list')?.querySelector(`.ci[data-id="${id}"]`);if(listItem)listItem.scrollIntoView({block:'nearest'});
   renderDetail(ch);
   requestAnimationFrame(()=>requestAnimationFrame(()=>{S.isNavigating=false;}));
@@ -1218,7 +1263,7 @@ function setupSyncScroll(){
 function renderDetail(ch){
   const dp=$('detail');
   if(!ch){dp.innerHTML='<div class="detail-empty"><i class="ti ti-hand-click" style="font-size:15px"></i> Select a change to see details</div>';return;}
-  const cbM={added:'cb-add',deleted:'cb-del',modified:'cb-mod',moved:'cb-mov'};
+  const cbM={added:'cb-add',deleted:'cb-del',modified:'cb-mod',moved:'cb-mov',renumbered:'cb-ren'};
   const csM={low:'cs-low',medium:'cs-med',high:'cs-high',critical:'cs-crit'};
   let catPills=(ch.cats||[]).map(c=>`<span class="cpill" style="background:var(--card);color:var(--text2);font-size:10px">${c}</span>`).join('');
   if(ch.sheet)catPills+=`<span class="cpill" style="background:var(--card);color:var(--text2);font-size:10px">${ch.sheet}!${ch.cellRef||''}</span>`;
@@ -1227,7 +1272,7 @@ function renderDetail(ch){
   let chips='';
   if(ch.rmText)chips+=`<span class="dchip dch-rm">− ${esc(ch.rmText.slice(0,80))}${ch.rmText.length>80?'…':''}</span>`;
   if(ch.addText)chips+=`<span class="dchip dch-add">+ ${esc(ch.addText.slice(0,80))}${ch.addText.length>80?'…':''}</span>`;
-  dp.innerHTML=`<div class="detail-inner"><div class="di-meta"><span class="di-id">Change #${ch.id}</span><span class="cbadge ${cbM[ch.type]||'cb-mod'}">${ch.type}</span><span class="csev ${csM[ch.sev]||'cs-low'}">${ch.sev}</span>${catPills}${ch.sim!==undefined?`<span class="di-sim">${ch.sim}% similar</span>`:''}</div><div class="di-cols">${oldBox}${newBox}</div>${chips?`<div class="di-chips">${chips}</div>`:''}</div>`;
+  dp.innerHTML=`<div class="detail-inner"><div class="di-meta"><span class="di-id">Change #${ch.id}</span><span class="cbadge ${cbM[ch.type]||'cb-mod'}">${ch.type}</span><span class="csev ${csM[ch.sev]||'cs-low'}">${ch.sev}</span>${catPills}${ch.confidence!==undefined?`<span class="di-sim">${ch.confidence}% detection confidence${ch.sim!==undefined?' · '+ch.sim+'% text similarity':''}</span>`:(ch.sim!==undefined?`<span class="di-sim">${ch.sim}% similar</span>`:'')}</div><div class="di-cols">${oldBox}${newBox}</div>${chips?`<div class="di-chips">${chips}</div>`:''}</div>`;
 }
 
 // ── Wire buttons ──────────────────────────────────────────────
@@ -1240,8 +1285,8 @@ $('btn-sync').addEventListener('click',()=>{S.syncScroll=!S.syncScroll;$('btn-sy
 $('btn-sync').classList.add('btn-primary');
 $('btn-export').addEventListener('click',()=>{
   if(!S.changes.length)return;
-  const rows=[['#','Type','Severity','Sheet','Cell','Categories','Old text','New text','Removed','Added']];
-  S.changes.forEach(c=>rows.push([c.id,c.type,c.sev,c.sheet||'',c.cellRef||'',(c.cats||[]).join(';'),c.oldText,c.newText,c.rmText,c.addText]));
+  const rows=[['#','Type','Business Impact','Detection Confidence','Text Similarity','Section','Sheet','Cell','Categories','Old text','New text','Removed','Added']];
+  S.changes.forEach(c=>rows.push([c.id,c.type,c.sev,c.confidence??'',c.sim??'',c.section||'',c.sheet||'',c.cellRef||'',(c.cats||[]).join(';'),c.oldText,c.newText,c.rmText,c.addText]));
   const safeCsv=v=>{let x=String(v??'');if(/^[=+@]/.test(x)||(/^-/).test(x)&&!/^-[0-9.]+$/.test(x))x="'"+x;return '"'+x.replace(/"/g,'""')+'"';};
   const csv=rows.map(r=>r.map(safeCsv).join(',')).join('\n');
   const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='diffiq-changes.csv';a.click();
@@ -1284,7 +1329,7 @@ $('btn-install').addEventListener('click',async()=>{
 if('serviceWorker' in navigator){
   window.addEventListener('load',async()=>{
     try{
-      const r=await navigator.serviceWorker.register('./sw.js',{scope:'./'});
+      const r=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
       console.log('[DiffIQ] SW registered',r.scope);
       if(!navigator.serviceWorker.controller){console.log('[DiffIQ] First SW install complete; reload may be needed for installability.');}
     }catch(e){
