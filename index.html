@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="DiffIQ"/>
+<meta name="theme-color" content="#0d1117"/>
+<title>DiffIQ — Document Change Intelligence</title>
+<link rel="manifest" href="./manifest.json"/>
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png"/>
+<link rel="apple-touch-icon" href="./icon-192.png"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--panel:#161b27;--card:#1c2333;--card2:#222d42;--border:#2a3347;--border-hi:#3d4f70;
+  --text:#e2e8f5;--text2:#8892a8;--text3:#4d5a72;
+  --green:#22c55e;--green-bg:rgba(34,197,94,.1);--green-dim:rgba(34,197,94,.18);--green-bd:rgba(34,197,94,.3);
+  --red:#ef4444;--red-bg:rgba(239,68,68,.1);--red-dim:rgba(239,68,68,.18);--red-bd:rgba(239,68,68,.3);
+  --amber:#f59e0b;--amber-bg:rgba(245,158,11,.1);--amber-dim:rgba(245,158,11,.18);--amber-bd:rgba(245,158,11,.3);
+  --purple:#a78bfa;--purple-bg:rgba(167,139,250,.1);--purple-dim:rgba(167,139,250,.18);--purple-bd:rgba(167,139,250,.3);
+  --blue:#3b82f6;--blue-bg:rgba(59,130,246,.12);--blue-bd:rgba(59,130,246,.35);
+  --radius:6px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;font-size:13px;line-height:1.5}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:4px}
+button,input{font-family:inherit}
+.hidden{display:none!important}
+
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* topbar */
+#topbar{display:flex;align-items:center;height:46px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;padding:0 16px;gap:0}
+.logo{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.02em;margin-right:24px}
+.logo-box{width:24px;height:24px;background:var(--blue);border-radius:5px;display:flex;align-items:center;justify-content:center}
+.nav-tab{height:46px;padding:0 14px;display:flex;align-items:center;font-size:12px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;user-select:none}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.on{color:var(--text);border-bottom-color:var(--blue)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border-hi);background:transparent;color:var(--text2);transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--card);color:var(--text)}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:#2563eb;border-color:#2563eb;color:#fff}
+.btn-primary:disabled{background:var(--card);border-color:var(--border);color:var(--text3);cursor:not-allowed;transform:none}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--blue-bg);border:1px solid var(--blue-bd);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--blue)}
+
+#body{display:flex;flex:1;overflow:hidden}
+
+/* sidebar */
+#sidebar{width:48px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;flex-shrink:0}
+.sico{width:34px;height:34px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);font-size:16px;transition:all .15s}
+.sico:hover,.sico.on{background:var(--card);color:var(--text)}
+.sico.on{color:var(--blue)}
+.sico-bot{margin-top:auto}
+
+/* ── UPLOAD PAGE ── */
+#page-upload{flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px}
+.up-header{text-align:center;margin-bottom:32px}
+.up-header h1{font-size:20px;font-weight:700;letter-spacing:-.02em;margin-bottom:8px}
+.up-header p{font-size:13px;color:var(--text2);max-width:440px;line-height:1.6}
+.up-row{display:flex;gap:14px;width:100%;max-width:760px;align-items:stretch}
+.up-arrow{display:flex;align-items:center;justify-content:center;color:var(--text3);flex-shrink:0;padding-top:20px}
+.dropzone{flex:1;min-width:0;border:1.5px dashed var(--border-hi);border-radius:10px;padding:24px 18px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all .2s;background:var(--panel)}
+.dropzone:hover,.dropzone.drag{border-color:var(--blue);background:var(--blue-bg)}
+.dropzone.filled{border-style:solid}
+.dz-old:hover,.dz-old.drag{border-color:var(--red)}
+.dz-new:hover,.dz-new.drag{border-color:var(--green)}
+.dz-old.filled{border-color:var(--red-bd)}
+.dz-new.filled{border-color:var(--green-bd)}
+.dz-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:4px}
+.dz-old .dz-icon{background:var(--red-dim)}
+.dz-new .dz-icon{background:var(--green-dim)}
+.dz-title{font-size:13px;font-weight:600;color:var(--text)}
+.dz-hint{font-size:11px;color:var(--text3);text-align:center;line-height:1.5}
+.dz-filename{font-size:11px;color:var(--text2);background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:5px 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;text-align:center}
+.format-row{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+.fmt{font-size:10px;padding:2px 6px;border-radius:3px;background:var(--card);border:1px solid var(--border);color:var(--text3);font-weight:500}
+.config-card{width:100%;max-width:760px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-top:16px}
+.config-title{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.chip-row{display:flex;gap:5px;flex-wrap:wrap}
+.chip{padding:4px 11px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);color:var(--text2);background:transparent;transition:all .15s;user-select:none}
+.chip:hover{border-color:var(--border-hi);color:var(--text)}
+.chip.on{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue)}
+.up-actions{display:flex;align-items:center;gap:10px;margin-top:16px;width:100%;max-width:760px;justify-content:flex-end}
+.err-msg{font-size:12px;color:var(--red)}
+.cmp-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 22px;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;border:none;background:var(--blue);color:#fff;transition:all .15s}
+.cmp-btn:hover{background:#2563eb}
+.cmp-btn:disabled{background:var(--card);color:var(--text3);cursor:not-allowed}
+
+/* ── PROGRESS PAGE ── */
+#page-progress{flex:1;display:flex;align-items:center;justify-content:center}
+.prog-wrap{width:380px}
+.prog-icon-wrap{text-align:center;margin-bottom:20px}
+.spin{animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.prog-title{font-size:17px;font-weight:700;text-align:center;margin-bottom:4px}
+.prog-sub{font-size:12px;color:var(--text2);text-align:center;margin-bottom:18px}
+.prog-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:6px}
+.prog-fill{height:100%;background:var(--blue);transition:width .4s ease;border-radius:2px}
+.prog-pct{font-size:11px;color:var(--text3);text-align:right;margin-bottom:20px}
+.stage-list{display:flex;flex-direction:column;gap:5px}
+.si{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:12px;color:var(--text3)}
+.si.done{color:var(--green)}.si.active{color:var(--text)}
+.si-dot{width:6px;height:6px;border-radius:50%;background:var(--border);flex-shrink:0}
+.si.done .si-dot{background:var(--green)}
+.si.active .si-dot{background:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.2)}
+.si-check{font-size:12px;color:var(--green)}
+
+/* ── VIEWER PAGE ── */
+#page-viewer{flex:1;display:flex;overflow:hidden}
+
+/* changes panel */
+#changes-panel{width:272px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);background:var(--panel)}
+.cp-header{padding:12px 13px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.cp-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cp-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+.total-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--card);color:var(--text2);border:1px solid var(--border)}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px}
+.sc{padding:7px 9px;border-radius:6px}
+.sc .sv{font-size:17px;font-weight:700;line-height:1}
+.sc .sl{font-size:10px;font-weight:500;margin-top:2px}
+.sc-add{background:var(--green-bg)}.sc-add .sv,.sc-add .sl{color:var(--green)}
+.sc-del{background:var(--red-bg)}.sc-del .sv,.sc-del .sl{color:var(--red)}
+.sc-mod{background:var(--amber-bg)}.sc-mod .sv,.sc-mod .sl{color:var(--amber)}
+.sc-mov{background:var(--purple-bg)}.sc-mov .sv,.sc-mov .sl{color:var(--purple)}
+.meta-row{display:flex;gap:4px;flex-wrap:wrap}
+.mpill{font-size:10px;font-weight:600;padding:2px 7px;border-radius:3px}
+.mp-num{background:var(--blue-bg);color:var(--blue)}
+.mp-fin{background:var(--amber-bg);color:var(--amber)}
+.mp-hi{background:var(--red-bg);color:var(--red)}
+.mp-date{background:var(--purple-bg);color:var(--purple)}
+.cp-search{padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.search-inp{width:100%;padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;outline:none;transition:border .15s}
+.search-inp::placeholder{color:var(--text3)}
+.search-inp:focus{border-color:var(--border-hi)}
+.filter-row{display:flex;gap:3px;flex-wrap:wrap;margin-top:7px}
+.fc{padding:3px 8px;border-radius:20px;font-size:10px;font-weight:500;cursor:pointer;border:1px solid transparent;color:var(--text3);background:transparent;transition:all .15s;user-select:none}
+.fc:hover{color:var(--text);background:var(--card)}
+.fc.on{background:var(--card2);border-color:var(--border-hi);color:var(--text)}
+.change-list{flex:1;overflow-y:auto;padding:6px 8px}
+.ci{padding:8px 10px;border-radius:7px;cursor:pointer;margin-bottom:3px;border:1px solid transparent;transition:all .12s}
+.ci:hover{background:var(--card)}
+.ci.active{background:var(--card2);border-color:var(--border-hi)}
+.ci-head{display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.cnum{font-size:10px;color:var(--text3);min-width:24px;font-variant-numeric:tabular-nums}
+.cbadge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.02em}
+.cb-add{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.cb-del{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+.cb-mod{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.cb-mov{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bd)}
+.csev{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:auto;text-transform:uppercase;letter-spacing:.03em}
+.cs-low{background:var(--card);color:var(--text3)}
+.cs-med{background:var(--amber-bg);color:var(--amber)}
+.cs-high{background:var(--red-bg);color:var(--red)}
+.cs-crit{background:var(--red);color:#fff}
+.ci-text{font-size:11px;color:var(--text2);line-height:1.45;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ci-pills{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap}
+.cpill{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px}
+.cp-nav{padding:8px 10px;border-top:1px solid var(--border);display:flex;gap:5px;flex-shrink:0}
+.nbtn{flex:1;padding:6px 0;border-radius:var(--radius);font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:4px}
+.nbtn:hover{background:var(--card);color:var(--text);border-color:var(--border-hi)}
+
+/* doc area */
+#doc-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.doc-toolbar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0}
+.dt-label{font-size:11px;font-weight:500;color:var(--text3)}
+.legend{display:flex;gap:12px;margin-left:auto}
+.leg{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:500;color:var(--text3)}
+.leg-dot{width:7px;height:7px;border-radius:50%}
+.doc-panes{display:flex;flex:1;overflow:hidden}
+.pane{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.pane+.pane{border-left:1px solid var(--border)}
+.pane-hd{padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;flex-shrink:0}
+.pane-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pane-name{font-size:11px;font-weight:500;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pane-badge{font-size:10px;padding:1px 6px;border-radius:3px;margin-left:auto;font-weight:600}
+.pane-body{flex:1;overflow-y:auto;background:var(--card)}
+
+/* rendered doc styles — white background like real doc */
+.doc-render{background:#fff;color:#1a1a18;min-height:100%;padding:36px 44px;font-family:Georgia,'Times New Roman',serif;font-size:13.5px;line-height:1.75}
+.doc-render h1,.doc-render h2,.doc-render h3,.doc-render h4{font-weight:700;margin:1.2em 0 .4em;color:#0d0d0d;font-family:-apple-system,sans-serif}
+.doc-render h1{font-size:19px}.doc-render h2{font-size:16px}.doc-render h3{font-size:14px}
+.doc-render p{margin-bottom:.75em}
+.doc-render table{width:100%;border-collapse:collapse;margin:.9em 0;font-size:12px;font-family:-apple-system,sans-serif}
+.doc-render th,.doc-render td{border:1px solid #ccc;padding:5px 9px;text-align:left}
+.doc-render th{background:#f0f0ee;font-weight:600}
+.doc-render ul,.doc-render ol{margin:.4em 0 .75em 1.4em}
+.doc-render li{margin-bottom:.25em}
+.doc-render strong,.doc-render b{font-weight:700}
+.doc-render em,.doc-render i{font-style:italic}
+.doc-render blockquote{border-left:3px solid #ccc;padding-left:1em;color:#555;margin:1em 0}
+/* highlight classes applied to doc-render elements */
+.hl-add{background:rgba(34,197,94,.18)!important;border-left:3px solid #22c55e!important;padding-left:8px!important;border-radius:0 3px 3px 0!important;cursor:pointer}
+.hl-del{background:rgba(239,68,68,.18)!important;border-left:3px solid #ef4444!important;padding-left:8px!important;border-radius:0 3px 3px 0!important;cursor:pointer}
+.hl-mod{background:rgba(245,158,11,.18)!important;border-left:3px solid #f59e0b!important;padding-left:8px!important;border-radius:0 3px 3px 0!important;cursor:pointer}
+.hl-mov{background:rgba(167,139,250,.18)!important;border-left:3px solid #a78bfa!important;padding-left:8px!important;border-radius:0 3px 3px 0!important;cursor:pointer}
+.focus-ring{outline:2px solid #3b82f6!important;outline-offset:2px!important;border-radius:3px!important}
+mark.rm{background:rgba(239,68,68,.22);color:#b91c1c;border-radius:2px;padding:0 1px}
+mark.ad{background:rgba(34,197,94,.22);color:#15803d;border-radius:2px;padding:0 1px}
+
+/* text pane */
+.txt-render{background:#fff;color:#1a1a18;min-height:100%;padding:36px 44px;font-family:'Courier New',monospace;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+.txt-render p{margin-bottom:4px;padding:2px 0;border-left:2px solid transparent}
+.txt-render p.hl-add,.txt-render p.hl-del,.txt-render p.hl-mod,.txt-render p.hl-mov{padding-left:8px}
+
+/* xlsx pane */
+.xlsx-render{background:#fff;min-height:100%;padding:16px}
+.sheet-tab-row{display:flex;gap:2px;margin-bottom:12px;flex-wrap:wrap}
+.sheet-tab{padding:4px 12px;border-radius:4px 4px 0 0;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #ddd;background:#f5f5f3;color:#555;transition:all .15s}
+.sheet-tab.on{background:#fff;color:#111;border-bottom-color:#fff}
+.xlsx-table-wrap{overflow:auto}
+.xlsx-table{border-collapse:collapse;font-size:12px;font-family:-apple-system,sans-serif;min-width:100%}
+.xlsx-table th,.xlsx-table td{border:1px solid #ddd;padding:4px 8px;white-space:nowrap;text-align:left;min-width:60px}
+.xlsx-table th{background:#f0f0ee;font-weight:600;color:#333;position:sticky;top:0}
+.xlsx-table td{color:#1a1a18}
+.xlsx-table tr:hover td{background:#f9f9f7}
+.cell-add{background:rgba(34,197,94,.15)!important;color:#15803d}
+.cell-del{background:rgba(239,68,68,.15)!important;color:#b91c1c}
+.cell-mod{background:rgba(245,158,11,.15)!important;color:#92400e}
+
+/* pdf canvas */
+.pdf-wrap{background:#525659;min-height:100%;display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px;position:relative}
+.pdf-page-wrap{position:relative;display:inline-block}
+.pdf-page-wrap canvas{display:block;max-width:100%}
+.pdf-hl-overlay{position:absolute;top:0;left:0;pointer-events:none}
+.pdf-text-overlay{position:absolute;top:0;left:0;overflow:hidden;opacity:0;line-height:1;white-space:pre;pointer-events:none}
+
+/* detail panel */
+#detail{border-top:1px solid var(--border);background:var(--panel);flex-shrink:0;overflow-y:auto;max-height:200px}
+.detail-empty{display:flex;align-items:center;justify-content:center;height:72px;color:var(--text3);font-size:12px;gap:6px}
+.detail-inner{padding:11px 15px 13px}
+.di-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:9px}
+.di-id{font-size:11px;color:var(--text3)}
+.di-sim{font-size:10px;color:var(--text3);margin-left:auto}
+.di-cols{display:flex;gap:10px}
+.di-col{flex:1;min-width:0}
+.di-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+.di-box{border-radius:6px;padding:8px 10px;font-size:12px;line-height:1.6}
+.di-old{background:var(--red-bg);border:1px solid var(--red-bd);color:#fca5a5}
+.di-new{background:var(--green-bg);border:1px solid var(--green-bd);color:#86efac}
+.di-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.dchip{font-size:11px;font-weight:500;padding:3px 9px;border-radius:4px}
+.dch-rm{background:var(--red-dim);color:#fca5a5}
+.dch-add{background:var(--green-dim);color:#86efac}
+
+.loading-pane{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text2);font-size:12px;gap:8px}
+
+/* PWA install helper */
+.pwa-toast{position:fixed;right:16px;bottom:16px;z-index:1000;width:min(390px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--border-hi);border-radius:10px;padding:13px 14px;box-shadow:0 18px 48px rgba(0,0,0,.38)}
+.pwa-toast-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px}
+.pwa-toast-text{font-size:11px;line-height:1.55;color:var(--text2);margin-bottom:10px}
+#btn-install.install-ready{border-color:var(--blue);color:#fff;background:var(--blue)}
+#btn-install.install-ready:hover{background:#2563eb}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div class="logo">
+      <div class="logo-box"><i class="ti ti-files" style="font-size:13px;color:#fff" aria-hidden="true"></i></div>
+      DiffIQ
+    </div>
+    <div class="nav-tab on">Compare</div>
+    <div class="topbar-right">
+      <button class="btn hidden" id="btn-new"><i class="ti ti-plus" style="font-size:12px" aria-hidden="true"></i> New</button>
+      <button class="btn hidden" id="btn-export"><i class="ti ti-download" style="font-size:12px" aria-hidden="true"></i> Export CSV</button>
+      <button class="btn" id="btn-install" title="Install DiffIQ as an app"><i class="ti ti-device-desktop-down" style="font-size:12px" aria-hidden="true"></i> Install</button>
+      <div class="avatar">KD</div>
+    </div>
+  </div>
+
+  <div id="body">
+    <div id="sidebar">
+      <div class="sico on" title="Compare"><i class="ti ti-git-compare" aria-hidden="true"></i></div>
+      <div class="sico" title="Documents"><i class="ti ti-folder" aria-hidden="true"></i></div>
+      <div class="sico sico-bot" title="Settings"><i class="ti ti-settings" aria-hidden="true"></i></div>
+    </div>
+
+    <!-- UPLOAD -->
+    <div id="page-upload">
+      <div class="up-header">
+        <h1>Document Change Intelligence</h1>
+        <p>Upload two versions of any document to detect, visualize, and understand every meaningful change between them.</p>
+      </div>
+      <div class="up-row">
+        <div class="dropzone dz-old" id="dz-old" tabindex="0" role="button">
+          <div class="dz-icon"><i class="ti ti-file-text" style="color:var(--red);font-size:20px" aria-hidden="true"></i></div>
+          <div class="dz-title">Old version</div>
+          <div class="dz-hint">Drop your original document here<br>or click to browse</div>
+          <div class="dz-filename hidden" id="fn-old"></div>
+          <div class="format-row">
+            <span class="fmt">TXT</span><span class="fmt">MD</span><span class="fmt">DOCX</span>
+            <span class="fmt">PDF</span><span class="fmt">XLSX</span><span class="fmt">CSV</span><span class="fmt">HTML</span>
+          </div>
+          <input type="file" id="fi-old" style="display:none" accept=".txt,.md,.csv,.html,.htm,.json,.pdf,.docx,.xlsx,.pptx">
+        </div>
+        <div class="up-arrow"><i class="ti ti-arrow-right" style="font-size:20px" aria-hidden="true"></i></div>
+        <div class="dropzone dz-new" id="dz-new" tabindex="0" role="button">
+          <div class="dz-icon"><i class="ti ti-file-text" style="color:var(--green);font-size:20px" aria-hidden="true"></i></div>
+          <div class="dz-title">New version</div>
+          <div class="dz-hint">Drop the updated document here<br>or click to browse</div>
+          <div class="dz-filename hidden" id="fn-new"></div>
+          <div class="format-row">
+            <span class="fmt">TXT</span><span class="fmt">MD</span><span class="fmt">DOCX</span>
+            <span class="fmt">PDF</span><span class="fmt">XLSX</span><span class="fmt">CSV</span><span class="fmt">HTML</span>
+          </div>
+          <input type="file" id="fi-new" style="display:none" accept=".txt,.md,.csv,.html,.htm,.json,.pdf,.docx,.xlsx,.pptx">
+        </div>
+      </div>
+      <div class="config-card">
+        <div style="display:flex;gap:32px;flex-wrap:wrap">
+          <div>
+            <div class="config-title">Sensitivity</div>
+            <div class="chip-row">
+              <div class="chip on" data-grp="sens">Balanced</div>
+              <div class="chip" data-grp="sens">Strict</div>
+              <div class="chip" data-grp="sens">Semantic</div>
+            </div>
+          </div>
+          <div>
+            <div class="config-title">Watch for</div>
+            <div class="chip-row">
+              <div class="chip on" data-grp="watch">Financial</div>
+              <div class="chip on" data-grp="watch">Dates</div>
+              <div class="chip" data-grp="watch">Legal terms</div>
+              <div class="chip" data-grp="watch">Names</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="up-actions">
+        <span class="err-msg hidden" id="err-msg"></span>
+        <button class="cmp-btn" id="btn-compare" disabled>
+          <i class="ti ti-git-compare" style="font-size:14px" aria-hidden="true"></i>
+          Compare documents
+        </button>
+      </div>
+    </div>
+
+    <!-- PROGRESS -->
+    <div id="page-progress" class="hidden">
+      <div class="prog-wrap">
+        <div class="prog-icon-wrap">
+          <span class="spin" id="prog-ico"><i class="ti ti-loader" style="font-size:36px;color:var(--blue)" aria-hidden="true"></i></span>
+        </div>
+        <div class="prog-title" id="prog-title">Processing</div>
+        <div class="prog-sub" id="prog-sub">Preparing…</div>
+        <div class="prog-track"><div class="prog-fill" id="prog-bar" style="width:0%"></div></div>
+        <div class="prog-pct" id="prog-pct">0%</div>
+        <div class="stage-list" id="stage-list"></div>
+      </div>
+    </div>
+
+    <!-- VIEWER -->
+    <div id="page-viewer" class="hidden">
+      <div id="changes-panel">
+        <div class="cp-header">
+          <div class="cp-top">
+            <span class="cp-name" id="cp-name">Comparison</span>
+            <span class="total-pill" id="total-pill">0</span>
+          </div>
+          <div class="stat-grid">
+            <div class="sc sc-add"><div class="sv" id="s-add">0</div><div class="sl">Added</div></div>
+            <div class="sc sc-del"><div class="sv" id="s-del">0</div><div class="sl">Deleted</div></div>
+            <div class="sc sc-mod"><div class="sv" id="s-mod">0</div><div class="sl">Modified</div></div>
+            <div class="sc sc-mov"><div class="sv" id="s-mov">0</div><div class="sl">Moved</div></div>
+          </div>
+          <div class="meta-row" id="meta-row"></div>
+        </div>
+        <div class="cp-search">
+          <input class="search-inp" id="search-inp" type="text" placeholder="Search changes…">
+          <div class="filter-row" id="filter-row"></div>
+        </div>
+        <div class="change-list" id="change-list"></div>
+        <div class="cp-nav">
+          <button class="nbtn" id="btn-prev"><i class="ti ti-arrow-up" style="font-size:11px" aria-hidden="true"></i> Prev</button>
+          <button class="nbtn" id="btn-next">Next <i class="ti ti-arrow-down" style="font-size:11px" aria-hidden="true"></i></button>
+        </div>
+      </div>
+
+      <div id="doc-area">
+        <div class="doc-toolbar">
+          <span class="dt-label">Side-by-side comparison</span>
+          <button class="btn" id="btn-sync" aria-pressed="true" title="Synchronize pane scrolling"><i class="ti ti-arrows-vertical" style="font-size:11px" aria-hidden="true"></i> Sync scroll</button>
+          <div class="legend">
+            <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>Added</div>
+            <div class="leg"><div class="leg-dot" style="background:var(--red)"></div>Deleted</div>
+            <div class="leg"><div class="leg-dot" style="background:var(--amber)"></div>Modified</div>
+            <div class="leg"><div class="leg-dot" style="background:var(--purple)"></div>Moved</div>
+          </div>
+          <button class="btn" id="btn-back" style="margin-left:8px">
+            <i class="ti ti-plus" style="font-size:11px" aria-hidden="true"></i> New comparison
+          </button>
+        </div>
+        <div class="doc-panes">
+          <div class="pane">
+            <div class="pane-hd">
+              <div class="pane-dot" style="background:var(--red)"></div>
+              <span class="pane-name" id="pane-old-name">Old version</span>
+              <span class="pane-badge" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)">Original</span>
+            </div>
+            <div class="pane-body" id="pane-old"></div>
+          </div>
+          <div class="pane">
+            <div class="pane-hd">
+              <div class="pane-dot" style="background:var(--green)"></div>
+              <span class="pane-name" id="pane-new-name">New version</span>
+              <span class="pane-badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)">Updated</span>
+            </div>
+            <div class="pane-body" id="pane-new"></div>
+          </div>
+        </div>
+        <div id="detail">
+          <div class="detail-empty"><i class="ti ti-hand-click" style="font-size:15px" aria-hidden="true"></i> Select a change to see details</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="pwa-toast" class="pwa-toast hidden" role="status" aria-live="polite">
+  <div class="pwa-toast-title" id="pwa-toast-title">Install DiffIQ</div>
+  <div class="pwa-toast-text" id="pwa-toast-text"></div>
+  <button class="btn" id="pwa-toast-close" type="button">Close</button>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+// ── File reading helpers ───────────────────────────────────────
+function readBuf(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=()=>rej(r.error||new Error('Failed to read file'));r.readAsArrayBuffer(file);});}
+function readTxt(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=()=>rej(r.error||new Error('Failed to read file'));r.readAsText(file);});}
+
+const MAX_FILE_BYTES=25*1024*1024;
+const SUPPORTED_EXT=new Set(['txt','md','csv','html','htm','json','pdf','docx','xlsx','xls','pptx']);
+function fileExt(file){return (file?.name?.split('.').pop()||'').toLowerCase();}
+function validateFile(file){
+  if(!file)throw new Error('No file selected.');
+  const ext=fileExt(file);
+  if(!SUPPORTED_EXT.has(ext))throw new Error('Unsupported file type: .'+ext);
+  if(file.size===0)throw new Error(file.name+' is empty.');
+  if(file.size>MAX_FILE_BYTES)throw new Error(file.name+' exceeds the 25 MB browser-processing limit.');
+  return ext;
+}
+function sanitizeDom(root){
+  root.querySelectorAll('script,style,iframe,object,embed,meta,link,base').forEach(el=>el.remove());
+  root.querySelectorAll('*').forEach(el=>{
+    [...el.attributes].forEach(a=>{
+      const n=a.name.toLowerCase(),v=(a.value||'').trim().toLowerCase();
+      if(n.startsWith('on')||n==='srcdoc'||((n==='href'||n==='src')&&v.startsWith('javascript:')))el.removeAttribute(a.name);
+    });
+  });
+  return root;
+}
+function blockTypeFor(el){
+  const tag=el.tagName.toLowerCase();
+  if(/^h[1-6]$/.test(tag))return'heading';
+  if(tag==='td'||tag==='th')return'table_cell';
+  if(tag==='li')return'list_item';
+  return'paragraph';
+}
+function normalizeBlockText(t,type='paragraph'){
+  let x=String(t||'').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim().toLowerCase();
+  if(type==='heading')x=x.replace(/^\s*(?:section\s+)?\d+(?:\.\d+)*[\s.)-]*/i,'');
+  return x;
+}
+function buildStructuredBlocks(root){
+  const all=[...root.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,td,th')].filter(el=>{
+    const tag=el.tagName.toLowerCase();
+    if((tag==='p'||tag==='li')&&el.closest('td,th'))return false;
+    return (el.innerText||el.textContent||'').trim().length>0;
+  });
+  let section='';
+  const tableIds=new Map();let nextTable=0;
+  return all.map((el,index)=>{
+    const type=blockTypeFor(el),text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();
+    if(type==='heading')section=text;
+    let table=null,row=null,col=null;
+    if(type==='table_cell'){
+      const t=el.closest('table'); if(t&&!tableIds.has(t))tableIds.set(t,nextTable++); table=t?tableIds.get(t):null;
+      const tr=el.closest('tr'); row=tr?[...tr.parentElement.children].filter(x=>x.tagName==='TR').indexOf(tr):null;
+      col=tr?[...tr.children].indexOf(el):null;
+    }
+    el.dataset.diffiqBlock=String(index);
+    return{index,type,text,norm:normalizeBlockText(text,type),section,table,row,col};
+  });
+}
+
+// ── Extract content from any file type ───────────────────────
+async function extract(file){
+  const ext=validateFile(file);
+  if(['txt','md','json'].includes(ext)){
+    const text=await readTxt(file);return{type:'text',text,html:null};
+  }
+  if(ext==='csv'){
+    const text=await readTxt(file),rows=parseCsv(text),blocks=[];
+    rows.forEach((row,r)=>row.forEach((v,c)=>{const t=String(v??'').trim();if(t)blocks.push({index:blocks.length,type:'table_cell',text:t,norm:normalizeBlockText(t),section:'CSV',table:0,row:r,col:c});}));
+    return{type:'csv',text,rows,blocks,html:null};
+  }
+  if(['html','htm'].includes(ext)){
+    const raw=await readTxt(file),d=document.createElement('div');d.innerHTML=raw;sanitizeDom(d);
+    const blocks=buildStructuredBlocks(d),text=blocks.map(b=>b.text).join('\n');
+    return{type:'html',text,html:d.innerHTML,blocks};
+  }
+  if(ext==='docx'){
+    const buf=await readBuf(file);
+    const res=await mammoth.convertToHtml({arrayBuffer:buf},{includeDefaultStyleMap:true});
+    const d=document.createElement('div');d.innerHTML=res.value;sanitizeDom(d);
+    const blocks=buildStructuredBlocks(d),text=blocks.map(b=>b.text).join('\n');
+    return{type:'docx',text,html:d.innerHTML,blocks,warnings:res.messages||[]};
+  }
+  if(['xlsx','xls'].includes(ext)){
+    const buf=await readBuf(file),wb=XLSX.read(buf,{type:'array',cellFormula:true,cellStyles:true,cellDates:true});
+    let allText='';const sheets={},sheetMeta={};
+    wb.SheetNames.forEach(name=>{
+      const ws=wb.Sheets[name],range=ws['!ref']?XLSX.utils.decode_range(ws['!ref']):{s:{r:0,c:0},e:{r:-1,c:-1}};
+      const rows=[],meta=[];
+      for(let r=range.s.r;r<=range.e.r;r++){
+        const rr=[],mm=[];
+        for(let c=range.s.c;c<=range.e.c;c++){
+          const ref=XLSX.utils.encode_cell({r,c}),cell=ws[ref];
+          const value=cell?(cell.w??cell.v??''):'';
+          rr.push(value);mm.push(cell?{v:cell.v??'',w:cell.w??'',f:cell.f||'',t:cell.t||'',z:cell.z||''}:{v:'',w:'',f:'',t:'',z:''});
+        }
+        rows.push(rr);meta.push(mm);allText+=rr.join('\t')+'\n';
+      }
+      sheets[name]=rows;sheetMeta[name]=meta;
+    });
+    return{type:'xlsx',text:allText,sheets,sheetMeta,sheetNames:wb.SheetNames,html:null};
+  }
+  if(ext==='pptx'){
+    const buf=await readBuf(file),zip=await JSZip.loadAsync(buf),slides=[];
+    const names=Object.keys(zip.files).filter(n=>/^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a,b)=>Number(a.match(/slide(\d+)/)[1])-Number(b.match(/slide(\d+)/)[1]));
+    for(const name of names){
+      const xml=await zip.file(name).async('text'),doc=new DOMParser().parseFromString(xml,'application/xml');
+      const texts=[...doc.getElementsByTagNameNS('*','t')].map(n=>n.textContent||'').filter(Boolean);
+      slides.push({slide:Number(name.match(/slide(\d+)/)[1]),text:texts.join(' ')});
+    }
+    const text=slides.map(s=>'Slide '+s.slide+'\n'+s.text).join('\n\n');
+    const blocks=slides.map((s,i)=>({index:i,type:'slide',text:s.text,norm:normalizeBlockText(s.text),section:'Slide '+s.slide,slide:s.slide}));
+    return{type:'pptx',text,slides,blocks,html:null};
+  }
+  if(ext==='pdf'){
+    if(!window.pdfjsLib){
+      await new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';sc.onload=res;sc.onerror=()=>rej(new Error('Could not load PDF engine'));document.head.appendChild(sc);});
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    const buf=await readBuf(file),pdfDoc=await window.pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+    const pageCount=pdfDoc.numPages;let text='';const pageTexts=[],blocks=[];
+    for(let p=1;p<=pageCount;p++){
+      const page=await pdfDoc.getPage(p),tc=await page.getTextContent();
+      const pt=tc.items.map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();pageTexts.push(pt);text+=pt+'\n\n';
+      if(pt)blocks.push({index:blocks.length,type:'pdf_page',text:pt,norm:normalizeBlockText(pt),section:'Page '+p,page:p});
+    }
+    return{type:'pdf',text:text.trim(),html:null,pdfDoc,pageCount,pageTexts,blocks};
+  }
+  throw new Error('Unsupported file format.');
+}
+
+function parseCsv(text){
+  const rows=[];let row=[],cell='',q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(ch==='"'){
+      if(q&&text[i+1]==='"'){cell+='"';i++;}else q=!q;
+    }else if(ch===','&&!q){row.push(cell);cell='';}
+    else if((ch==='\n'||ch==='\r')&&!q){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cell);rows.push(row);row=[];cell='';}
+    else cell+=ch;
+  }
+  if(cell.length||row.length){row.push(cell);rows.push(row);}return rows;
+}
+
+// ── Diff engine ───────────────────────────────────────────────
+function tokenize(t){return t.split(/(\s+|[^\w\s]+)/).filter(x=>x.length);}
+function jaccard(a,b){
+  const sa=new Set(a.toLowerCase().split(/\s+/));
+  const sb=new Set(b.toLowerCase().split(/\s+/));
+  const n=[...sa].filter(x=>sb.has(x)).length;
+  const d=new Set([...sa,...sb]).size;
+  return d?n/d:1;
+}
+function lcs(a,b){
+  const m=a.length,n=b.length;
+  if(!m||!n)return[];
+  const dp=Array.from({length:m+1},()=>new Int32Array(n+1));
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]+1:Math.max(dp[i-1][j],dp[i][j-1]);
+  const r=[];let i=m,j=n;
+  while(i>0&&j>0){
+    if(a[i-1]===b[j-1]){r.unshift([i-1,j-1]);i--;j--;}
+    else if(dp[i-1][j]>dp[i][j-1])i--;else j--;
+  }
+  return r;
+}
+function inlineDiff(o,n,side){
+  const ot=tokenize(o||''),nt=tokenize(n||'');
+  const L=lcs(ot,nt);
+  const lo=new Set(L.map(([a])=>a)),ln=new Set(L.map(([,b])=>b));
+  let h='';
+  if(side==='old') ot.forEach((t,i)=>h+=lo.has(i)?esc(t):`<mark class="rm">${esc(t)}</mark>`);
+  else nt.forEach((t,i)=>h+=ln.has(i)?esc(t):`<mark class="ad">${esc(t)}</mark>`);
+  return h;
+}
+function formatChangedTokens(tokens){
+  const meaningful=(tokens||[]).filter(t=>!/^\s+$/.test(t));
+  return meaningful.join(' ').replace(/\s+([,.;:!?%])/g,'$1').replace(/([₹$£€])\s+/g,'$1').replace(/\s+([)\]])/g,'$1').replace(/([(\[])\s+/g,'$1').trim();
+}
+
+function splitSents(t){
+  return t.replace(/\r\n/g,'\n').split(/(?<=[.!?\n])\s+/).map(s=>s.trim()).filter(Boolean);
+}
+function classify(o,n){
+  const numRe=/[\$\u20b9\u00a3\u20ac]?\s*[\d,]+(?:\.\d+)?(?:\s*(?:lakh|crore|million|billion|k|%|days?|months?|years?|hours?|hrs?))?/gi;
+  const dateRe=/\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}\b|\b\d{4}[\/\-]\d{2}[\/\-]\d{2}\b|\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4}\b/gi;
+  const fin=/payment|price|cost|fee|penalty|liability|value|amount|contract|revenue|salary|bonus|rate|invoice|commercial/i;
+  const leg=/\b(shall|must|may|obligation|terminat|notice|indemnif|warrant|liable|liability|breach|default|confidential|compliance)\b/i;
+  const security=/security|data protection|encryption|incident|penetration test|business continuity|disaster recovery/i;
+  const cats=[],on=(o.match(numRe)||[]).join('|'),nn=(n.match(numRe)||[]).join('|'),od=(o.match(dateRe)||[]).join('|'),nd=(n.match(dateRe)||[]).join('|');
+  if(on!==nn)cats.push('numeric');if(od!==nd)cats.push('date');if(fin.test(o)||fin.test(n))cats.push('financial');if(leg.test(o)||leg.test(n))cats.push('legal');if(security.test(o)||security.test(n))cats.push('security');
+  const sim=jaccard(o,n);let sev='low';
+  if(!o||!n)sev=(cats.includes('legal')||cats.includes('financial')||cats.includes('security'))?'high':'medium';
+  else if(cats.includes('financial')&&cats.includes('numeric'))sev='high';
+  else if(cats.includes('legal')&&(cats.includes('numeric')||cats.includes('date')||/\b(shall|must|may)\b/i.test(o+' '+n)))sev='high';
+  else if(cats.includes('security')&&(cats.includes('numeric')||cats.includes('date')))sev='high';
+  else if(cats.includes('numeric')||cats.includes('date'))sev='medium';
+  else if(sim<0.35)sev='medium';
+  return{cats,sev,sim:Math.round(sim*100)};
+}
+
+function blockSimilarity(a,b){
+  if(!a||!b)return 0;
+  if(a.type!==b.type && !(a.type==='paragraph'&&b.type==='list_item') && !(a.type==='list_item'&&b.type==='paragraph'))return 0;
+  if(a.type==='table_cell'&&b.type==='table_cell'&&a.table===b.table&&a.row===b.row&&a.col===b.col){
+    return Math.max(.72,jaccard(a.text,b.text));
+  }
+  const jac=jaccard(a.norm,b.norm);
+  const aa=a.norm,bb=b.norm;
+  if(!aa&&!bb)return 1;if(!aa||!bb)return 0;
+  let prefix=0,lim=Math.min(aa.length,bb.length,80);while(prefix<lim&&aa[prefix]===bb[prefix])prefix++;
+  const pre=lim?prefix/lim:0;
+  return Math.min(1,jac*.82+pre*.18);
+}
+function currentSensitivity(){return S?.sensitivity||'balanced';}
+function matchThreshold(type){
+  const sens=currentSensitivity();
+  if(type==='heading')return sens==='semantic'?.34:sens==='strict'?.68:.48;
+  if(type==='table_cell')return sens==='semantic'?.28:sens==='strict'?.58:.40;
+  return sens==='semantic'?.30:sens==='strict'?.62:.42;
+}
+function lcsBlockPairs(oldBlocks,newBlocks){
+  const a=oldBlocks.map(b=>b.type+'|'+b.norm),b=newBlocks.map(x=>x.type+'|'+x.norm);
+  if(a.length*b.length<=1500000)return lcs(a,b);
+  // Memory-safe fallback for very large documents: greedy exact anchors.
+  const positions=new Map();b.forEach((k,j)=>{if(!positions.has(k))positions.set(k,[]);positions.get(k).push(j);});
+  const out=[];let last=-1;
+  for(let i=0;i<a.length;i++){
+    const arr=positions.get(a[i]);if(!arr)continue;
+    const j=arr.find(x=>x>last);if(j!==undefined){out.push([i,j]);last=j;}
+  }
+  return out;
+}
+function makeBlockChange(id,type,o,n,oi,ni,simOverride){
+  const ot=o?.text||'',nt=n?.text||'',cl=classify(ot,nt);
+  const ot2=tokenize(ot),nt2=tokenize(nt),L=lcs(ot2,nt2),lo=new Set(L.map(([a])=>a)),ln=new Set(L.map(([,b])=>b));
+  return{id,type,oldText:ot,newText:nt,oldIdx:oi,newIdx:ni,oldBlockIdx:oi,newBlockIdx:ni,
+    section:n?.section||o?.section||'',blockType:n?.type||o?.type||'paragraph',
+    table:n?.table??o?.table,row:n?.row??o?.row,col:n?.col??o?.col,slide:n?.slide??o?.slide,page:n?.page??o?.page,
+    ...cl,sim:simOverride!==undefined?Math.round(simOverride*100):cl.sim,
+    rmText:type==='added'?'':formatChangedTokens(ot2.filter((_,k)=>!lo.has(k))),
+    addText:type==='deleted'?'':formatChangedTokens(nt2.filter((_,k)=>!ln.has(k)))};
+}
+function diffBlocks(oldBlocks,newBlocks){
+  oldBlocks=oldBlocks||[];newBlocks=newBlocks||[];const changes=[];let id=1;
+  const exact=lcsBlockPairs(oldBlocks,newBlocks),matchedO=new Set(exact.map(x=>x[0])),matchedN=new Set(exact.map(x=>x[1]));
+  // Exact blocks outside the LCS are true moves/reorders, not delete+add.
+  const newByKey=new Map();
+  newBlocks.forEach((b,j)=>{if(matchedN.has(j))return;const k=b.type+'|'+b.norm;if(!newByKey.has(k))newByKey.set(k,[]);newByKey.get(k).push(j);});
+  for(let i=0;i<oldBlocks.length;i++){
+    if(matchedO.has(i))continue;const o=oldBlocks[i],k=o.type+'|'+o.norm,arr=newByKey.get(k);
+    if(arr?.length){const j=arr.shift();matchedO.add(i);matchedN.add(j);changes.push(makeBlockChange(id++,'moved',o,newBlocks[j],i,j,1));}
+  }
+  // Fuzzy modified pairing; score all viable unmatched pairs, then greedily take best.
+  const candidates=[];
+  for(let i=0;i<oldBlocks.length;i++)if(!matchedO.has(i)){
+    for(let j=0;j<newBlocks.length;j++)if(!matchedN.has(j)){
+      const o=oldBlocks[i],n=newBlocks[j];
+      // Stable coordinates are strong anchors for tables/slides.
+      let score=blockSimilarity(o,n);
+      if(o.type==='table_cell'&&n.type==='table_cell'&&o.table===n.table&&o.row===n.row&&o.col===n.col)score=Math.max(score,.8);
+      if(o.type==='slide'&&n.type==='slide'&&o.slide===n.slide)score=Math.max(score,.65);
+      if(score>=matchThreshold(o.type))candidates.push({i,j,score});
+    }
+  }
+  candidates.sort((a,b)=>b.score-a.score||Math.abs(a.i-a.j)-Math.abs(b.i-b.j));
+  for(const c of candidates){
+    if(matchedO.has(c.i)||matchedN.has(c.j))continue;
+    matchedO.add(c.i);matchedN.add(c.j);changes.push(makeBlockChange(id++,'modified',oldBlocks[c.i],newBlocks[c.j],c.i,c.j,c.score));
+  }
+  for(let i=0;i<oldBlocks.length;i++)if(!matchedO.has(i))changes.push(makeBlockChange(id++,'deleted',oldBlocks[i],null,i,-1,0));
+  for(let j=0;j<newBlocks.length;j++)if(!matchedN.has(j))changes.push(makeBlockChange(id++,'added',null,newBlocks[j],-1,j,0));
+  changes.sort((a,b)=>{
+    const ap=a.newIdx>=0?a.newIdx:a.oldIdx,bp=b.newIdx>=0?b.newIdx:b.oldIdx;return ap-bp||a.id-b.id;
+  });
+  changes.forEach((c,k)=>c.id=k+1);
+  return changes;
+}
+
+function diffTexts(ot,nt){
+  const os=splitSents(ot),ns=splitSents(nt);
+  const changes=[];let id=1;
+  const matched=new Set(),mNew=new Set(),pairs=[];
+  for(let i=0;i<os.length;i++){
+    let bj=-1,bs=0.32;
+    for(let j=0;j<ns.length;j++){
+      if(mNew.has(j))continue;
+      const s=jaccard(os[i],ns[j]);
+      if(s>bs){bs=s;bj=j;}
+    }
+    if(bj!==-1){pairs.push({i,j:bj});matched.add(i);mNew.add(bj);}
+  }
+  for(let i=0;i<os.length;i++){
+    if(matched.has(i))continue;
+    const mv=ns.some((s,j)=>!mNew.has(j)&&jaccard(os[i],s)>0.85);
+    const cl=classify(os[i],'');
+    changes.push({id:id++,type:mv?'moved':'deleted',oldText:os[i],newText:'',oldIdx:i,newIdx:-1,...cl,rmText:os[i],addText:''});
+  }
+  for(let j=0;j<ns.length;j++){
+    if(mNew.has(j))continue;
+    const cl=classify('',ns[j]);
+    changes.push({id:id++,type:'added',oldText:'',newText:ns[j],oldIdx:-1,newIdx:j,...cl,rmText:'',addText:ns[j]});
+  }
+  for(const{i,j}of pairs){
+    const o=os[i],n=ns[j];
+    if(o===n)continue;
+    const ot2=tokenize(o),nt2=tokenize(n);
+    const L=lcs(ot2,nt2);
+    const lo=new Set(L.map(([a])=>a)),ln=new Set(L.map(([,b])=>b));
+    const cl=classify(o,n);
+    changes.push({id:id++,type:'modified',oldText:o,newText:n,oldIdx:i,newIdx:j,...cl,
+      rmText:ot2.filter((_,k)=>!lo.has(k)).join('').trim(),
+      addText:nt2.filter((_,k)=>!ln.has(k)).join('').trim()});
+  }
+  changes.sort((a,b)=>(a.oldIdx>=0?a.oldIdx:a.newIdx)-(b.oldIdx>=0?b.oldIdx:b.newIdx));
+  return changes;
+}
+
+// ── XLSX cell-level diff ──────────────────────────────────────
+function diffXlsx(oldC,newC){
+  const changes=[];let id=1;
+  const oldSheets=oldC.sheets||{},newSheets=newC.sheets||{},oldMeta=oldC.sheetMeta||{},newMeta=newC.sheetMeta||{};
+  const allSheets=new Set([...Object.keys(oldSheets),...Object.keys(newSheets)]);
+  allSheets.forEach(sheet=>{
+    const oRows=oldSheets[sheet]||[],nRows=newSheets[sheet]||[],om=oldMeta[sheet]||[],nm=newMeta[sheet]||[];
+    const maxR=Math.max(oRows.length,nRows.length);
+    for(let r=0;r<maxR;r++){
+      const oRow=oRows[r]||[],nRow=nRows[r]||[],maxC=Math.max(oRow.length,nRow.length,(om[r]||[]).length,(nm[r]||[]).length);
+      for(let c=0;c<maxC;c++){
+        const oc=(om[r]||[])[c]||{},nc=(nm[r]||[])[c]||{};
+        const ov=String(oRow[c]??'').trim(),nv=String(nRow[c]??'').trim(),of=String(oc.f||''),nf=String(nc.f||'');
+        if(ov===nv&&of===nf)continue;
+        const type=(!ov&&!of)?'added':(!nv&&!nf)?'deleted':'modified',cl=classify((of?'='+of+' → ':'')+ov,(nf?'='+nf+' → ':'')+nv);
+        const formulaChanged=of!==nf;
+        if(formulaChanged&&!cl.cats.includes('formula'))cl.cats.push('formula');
+        if(formulaChanged&&cl.sev==='low')cl.sev='medium';
+        changes.push({id:id++,type,oldText:of?'='+of+(ov?' ['+ov+']':''):ov,newText:nf?'='+nf+(nv?' ['+nv+']':''):nv,
+          oldIdx:r,newIdx:r,sheet,row:r,col:c,cellRef:colLetter(c)+(r+1),...cl,formulaChanged,rmText:of||ov,addText:nf||nv});
+      }
+    }
+  });
+  return changes;
+}
+function colLetter(n){let r='';n++;while(n>0){r=String.fromCharCode(65+(n-1)%26)+r;n=Math.floor((n-1)/26);}return r;}
+
+// ── State ─────────────────────────────────────────────────────
+const S={oldFile:null,newFile:null,oldContent:null,newContent:null,
+  oldText:'',newText:'',changes:[],active:null,filtered:[],filter:'all',search:'',sensitivity:'balanced',syncScroll:true,isNavigating:false};
+
+// ── Page switching ─────────────────────────────────────────────
+function showPage(p){
+  ['upload','progress','viewer'].forEach(id=>{
+    $('page-'+id).classList.toggle('hidden',id!==p);
+  });
+  $('btn-new').classList.toggle('hidden',p!=='viewer');
+  $('btn-export').classList.toggle('hidden',p!=='viewer');
+}
+
+// ── Drop zones ─────────────────────────────────────────────────
+function setupDZ(dzId,fiId,fnId,key){
+  const dz=$(dzId),fi=$(fiId),fn=$(fnId);
+  dz.addEventListener('click',()=>fi.click());
+  dz.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')fi.click();});
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');attach(e.dataTransfer.files[0],key,fn,dz);});
+  fi.addEventListener('change',()=>attach(fi.files[0],key,fn,dz));
+}
+function attach(f,key,fnEl,dz){
+  if(!f)return;
+  S[key]=f;
+  fnEl.textContent=f.name+' · '+(f.size/1024).toFixed(1)+' KB';
+  fnEl.classList.remove('hidden');
+  dz.classList.add('filled');
+  $('btn-compare').disabled=!(S.oldFile&&S.newFile);
+  $('err-msg').classList.add('hidden');
+}
+setupDZ('dz-old','fi-old','fn-old','oldFile');
+setupDZ('dz-new','fi-new','fn-new','newFile');
+
+// Sensitivity chips
+document.querySelectorAll('[data-grp="sens"]').forEach(el=>{
+  el.addEventListener('click',()=>{
+    document.querySelectorAll('[data-grp="sens"]').forEach(x=>x.classList.remove('on'));
+    el.classList.add('on');
+    S.sensitivity=el.textContent.trim().toLowerCase();
+  });
+});
+document.querySelectorAll('[data-grp="watch"]').forEach(el=>el.addEventListener('click',()=>el.classList.toggle('on')));
+
+// ── Progress ───────────────────────────────────────────────────
+const STAGES=[
+  [10,'Reading files','Parsing document bytes'],
+  [25,'Extracting content','Converting to structured text'],
+  [42,'Normalizing','Splitting into comparable blocks'],
+  [58,'Aligning sections','Matching content between versions'],
+  [74,'Detecting changes','Running diff algorithm'],
+  [90,'Classifying','Scoring severity and tagging categories'],
+  [100,'Complete','Comparison ready'],
+];
+function setStage(i){
+  STAGES.forEach((st,idx)=>{const el=$('si-'+idx);if(!el)return;el.className='si'+(idx<i?' done':idx===i?' active':'');el.innerHTML=`<div class="si-dot"></div><span>${st[1]}</span>${idx<i?'<i class="ti ti-check si-check"></i>':''}`;});
+  const[pct,title,sub]=STAGES[i];$('prog-title').textContent=title;$('prog-sub').textContent=sub;$('prog-bar').style.width=pct+'%';$('prog-pct').textContent=pct+'%';
+}
+async function runCompare(){
+  if(!S.oldFile||!S.newFile){$('err-msg').textContent='Upload both files first.';$('err-msg').classList.remove('hidden');return;}
+  try{validateFile(S.oldFile);validateFile(S.newFile);}catch(e){$('err-msg').textContent=e.message;$('err-msg').classList.remove('hidden');return;}
+  showPage('progress');$('prog-ico').innerHTML='<i class="ti ti-loader" style="font-size:36px;color:var(--blue)"></i>';$('prog-ico').classList.add('spin');
+  const sl=$('stage-list');sl.innerHTML='';STAGES.forEach(([,l],i)=>{const d=document.createElement('div');d.className='si';d.id='si-'+i;d.innerHTML=`<div class="si-dot"></div><span>${l}</span>`;sl.appendChild(d);});
+  try{
+    setStage(0);await new Promise(r=>setTimeout(r,40));
+    setStage(1);const[oc,nc]=await Promise.all([extract(S.oldFile),extract(S.newFile)]);
+    S.oldContent=oc;S.newContent=nc;S.oldText=oc.text;S.newText=nc.text;
+    setStage(2);await new Promise(r=>setTimeout(r,20));
+    setStage(3);await new Promise(r=>setTimeout(r,20));
+    setStage(4);
+    const isXlsx=oc.type==='xlsx'&&nc.type==='xlsx';
+    const hasBlocks=Array.isArray(oc.blocks)&&Array.isArray(nc.blocks)&&!['pdf'].includes(oc.type)&&!['pdf'].includes(nc.type);
+    S.changes=isXlsx?diffXlsx(oc,nc):hasBlocks?diffBlocks(oc.blocks,nc.blocks):diffTexts(S.oldText,S.newText);
+    setStage(5);S.active=S.changes[0]||null;await new Promise(r=>setTimeout(r,30));
+    buildViewer();
+    setStage(6);$('prog-ico').innerHTML='<i class="ti ti-check" style="font-size:36px;color:var(--green)"></i>';$('prog-ico').classList.remove('spin');
+    await new Promise(r=>setTimeout(r,120));showPage('viewer');
+  }catch(e){
+    console.error(e);showPage('upload');$('err-msg').textContent='Error: '+(e?.message||String(e));$('err-msg').classList.remove('hidden');
+  }
+}
+
+// ── Build viewer ───────────────────────────────────────────────
+function buildViewer(){
+  const{changes,oldFile,newFile}=S;
+  $('pane-old-name').textContent=oldFile?.name||'Old';
+  $('pane-new-name').textContent=newFile?.name||'New';
+  $('cp-name').textContent=(oldFile?.name||'Old')+' → '+(newFile?.name||'New');
+  const cnt={added:0,deleted:0,modified:0,moved:0,numeric:0,date:0,financial:0,high:0};
+  changes.forEach(c=>{
+    if(cnt[c.type]!==undefined)cnt[c.type]++;
+    c.cats?.forEach(cat=>{if(cnt[cat]!==undefined)cnt[cat]++;});
+    if(['high','critical'].includes(c.sev))cnt.high++;
+  });
+  $('total-pill').textContent=changes.length;
+  $('s-add').textContent=cnt.added;$('s-del').textContent=cnt.deleted;
+  $('s-mod').textContent=cnt.modified;$('s-mov').textContent=cnt.moved;
+  const mr=$('meta-row');mr.innerHTML='';
+  if(cnt.numeric)mr.innerHTML+=`<span class="mpill mp-num">${cnt.numeric} numeric</span>`;
+  if(cnt.date)mr.innerHTML+=`<span class="mpill mp-date">${cnt.date} date</span>`;
+  if(cnt.financial)mr.innerHTML+=`<span class="mpill mp-fin">${cnt.financial} financial</span>`;
+  if(cnt.high)mr.innerHTML+=`<span class="mpill mp-hi">${cnt.high} high impact</span>`;
+  // filters
+  const fr=$('filter-row');fr.innerHTML='';
+  [['all','All'],['added','Added'],['deleted','Deleted'],['modified','Modified'],['moved','Moved'],['numeric','Numeric'],['date','Dates'],['financial','Financial'],['legal','Legal'],['formula','Formula'],['high_impact','High impact']].forEach(([f,l])=>{
+    const b=document.createElement('div');b.className='fc'+(f==='all'?' on':'');b.dataset.f=f;b.textContent=l;
+    b.addEventListener('click',()=>{S.filter=f;fr.querySelectorAll('.fc').forEach(x=>x.classList.toggle('on',x.dataset.f===f));renderList();});
+    fr.appendChild(b);
+  });
+  $('search-inp').addEventListener('input',e=>{S.search=e.target.value;renderList();});
+  buildPanes();
+  renderList();
+  if(S.active)setActive(S.active.id);
+}
+
+// ── Build panes ───────────────────────────────────────────────
+function buildPanes(){
+  const po=$('pane-old'),pn=$('pane-new');po.innerHTML='';pn.innerHTML='';
+  const os=splitSents(S.oldText),ns=splitSents(S.newText),byOld=new Map(),byNew=new Map();
+  S.changes.forEach(c=>{if(c.oldIdx>=0)byOld.set(c.oldIdx,c);if(c.newIdx>=0)byNew.set(c.newIdx,c);});
+  const renderSide=(container,content,sents,byIdx,side)=>{
+    if(content.type==='pdf')return renderPdfPane(container,content,byIdx,side);
+    if(content.type==='docx'||content.type==='html')return renderStructuredPane(container,content,side);
+    if(content.type==='pptx')return renderPptxPane(container,content,side);
+    if(content.type==='xlsx')return renderXlsxPane(container,content,side);
+    if(content.type==='csv')return renderCsvPane(container,content,side);
+    return renderTextPane(container,sents,byIdx,side);
+  };
+  renderSide(po,S.oldContent,os,byOld,'old');renderSide(pn,S.newContent,ns,byNew,'new');setupSyncScroll();
+}
+
+function renderStructuredPane(container,content,side){
+  const wrap=document.createElement('div');wrap.className='doc-render';wrap.innerHTML=content.html||'';sanitizeDom(wrap);container.appendChild(wrap);
+  const idxKey=side==='old'?'oldBlockIdx':'newBlockIdx';
+  S.changes.forEach(ch=>{
+    const idx=ch[idxKey];if(idx===undefined||idx<0)return;
+    const el=wrap.querySelector(`[data-diffiq-block="${idx}"]`);if(!el)return;
+    el.classList.add('hl-'+ch.type);el.dataset.id=ch.id;el.title=`${ch.type}${ch.section?' · '+ch.section:''}`;
+    if(ch.type==='modified'&&ch.oldText&&ch.newText)el.innerHTML=inlineDiff(ch.oldText,ch.newText,side);
+    el.addEventListener('click',()=>setActive(ch.id));
+  });
+}
+
+function renderPptxPane(container,content,side){
+  const wrap=document.createElement('div');wrap.className='doc-render';
+  const idxKey=side==='old'?'oldBlockIdx':'newBlockIdx';
+  (content.slides||[]).forEach((sl,i)=>{
+    const box=document.createElement('section');box.dataset.diffiqBlock=i;box.style.cssText='border:1px solid #ddd;border-radius:8px;padding:18px;margin:0 0 16px;background:#fff';
+    const h=document.createElement('h2');h.textContent='Slide '+sl.slide;box.appendChild(h);
+    const p=document.createElement('p');p.textContent=sl.text||'(No extractable text)';box.appendChild(p);
+    const ch=S.changes.find(c=>c[idxKey]===i);if(ch){box.classList.add('hl-'+ch.type);box.dataset.id=ch.id;if(ch.type==='modified')p.innerHTML=inlineDiff(ch.oldText,ch.newText,side);box.addEventListener('click',()=>setActive(ch.id));}
+    wrap.appendChild(box);
+  });container.appendChild(wrap);
+}
+
+// ── Text renderer ─────────────────────────────────────────────
+function renderTextPane(container,sents,byIdx,side){
+  const wrap=document.createElement('div');wrap.className='txt-render';
+  sents.forEach((sent,idx)=>{
+    const ch=byIdx.get(idx);
+    const p=document.createElement('p');
+    if(ch){
+      p.className='hl-'+ch.type;p.dataset.id=ch.id;
+      if(ch.type==='modified')p.innerHTML=inlineDiff(ch.oldText,ch.newText,side);
+      else p.textContent=sent;
+      p.addEventListener('click',()=>setActive(ch.id));
+    }else{p.textContent=sent;}
+    wrap.appendChild(p);
+  });
+  container.appendChild(wrap);
+}
+
+// ── CSV renderer ──────────────────────────────────────────────
+function renderCsvPane(container,content,side){
+  const wrap=document.createElement('div');wrap.className='xlsx-render';
+  if(!content.rows||!content.rows.length){wrap.textContent='Empty file';container.appendChild(wrap);return;}
+  const tw=document.createElement('div');tw.className='xlsx-table-wrap',t=document.createElement('table');t.className='xlsx-table';
+  const tbody=document.createElement('tbody'),idxKey=side==='old'?'oldBlockIdx':'newBlockIdx',blockAt=new Map();
+  (content.blocks||[]).forEach(b=>blockAt.set(b.row+'|'+b.col,b.index));
+  content.rows.forEach((row,ri)=>{
+    const tr=document.createElement('tr');row.forEach((cell,ci)=>{
+      const td=document.createElement(ri===0?'th':'td');td.textContent=cell;
+      const bi=blockAt.get(ri+'|'+ci),ch=S.changes.find(c=>c[idxKey]===bi);
+      if(ch){td.classList.add('cell-'+ch.type);td.dataset.id=ch.id;td.dataset.diffiqBlock=bi;td.style.cursor='pointer';if(ch.type==='modified')td.innerHTML=inlineDiff(ch.oldText,ch.newText,side);td.addEventListener('click',()=>setActive(ch.id));}
+      tr.appendChild(td);
+    });tbody.appendChild(tr);
+  });
+  t.appendChild(tbody);tw.appendChild(t);wrap.appendChild(tw);container.appendChild(wrap);
+}
+
+// ── XLSX renderer ─────────────────────────────────────────────
+function renderXlsxPane(container,content,side){
+  const wrap=document.createElement('div');wrap.className='xlsx-render';
+  if(!content.sheets){
+    const p=document.createElement('p');p.style.padding='20px';p.style.color='#666';p.textContent='No data';
+    wrap.appendChild(p);container.appendChild(wrap);return;
+  }
+  // Build change lookup: sheet+row+col → change
+  const chMap=new Map();
+  S.changes.forEach(c=>{if(c.sheet)chMap.set(c.sheet+'|'+c.row+'|'+c.col,c);});
+  // Sheet tabs
+  const tabRow=document.createElement('div');tabRow.className='sheet-tab-row';
+  const paneData=document.createElement('div');
+  content.sheetNames.forEach((name,si)=>{
+    const tab=document.createElement('div');tab.className='sheet-tab'+(si===0?' on':'');
+    tab.textContent=name;tab.dataset.sheet=name;
+    tab.addEventListener('click',()=>{
+      tabRow.querySelectorAll('.sheet-tab').forEach(t=>t.classList.remove('on'));
+      tab.classList.add('on');
+      renderSheet(paneData,content.sheets[name],name,chMap,side);
+    });
+    tabRow.appendChild(tab);
+  });
+  wrap.appendChild(tabRow);wrap.appendChild(paneData);
+  if(content.sheetNames.length>0)renderSheet(paneData,content.sheets[content.sheetNames[0]],content.sheetNames[0],chMap,side);
+  container.appendChild(wrap);
+}
+function renderSheet(container,rows,sheetName,chMap,side){
+  container.innerHTML='';
+  if(!rows||!rows.length){container.textContent='Empty sheet';return;}
+  const tw=document.createElement('div');tw.className='xlsx-table-wrap';
+  const t=document.createElement('table');t.className='xlsx-table';
+  const thead=document.createElement('thead'),tbody=document.createElement('tbody');
+  // Header row = col letters
+  const maxCols=Math.max(...rows.map(r=>r.length));
+  const htr=document.createElement('tr');
+  const rth=document.createElement('th');rth.textContent='';rth.style.background='#e8e8e6';rth.style.color='#888';htr.appendChild(rth);
+  for(let c=0;c<maxCols;c++){const th=document.createElement('th');th.textContent=colLetter(c);th.style.textAlign='center';htr.appendChild(th);}
+  thead.appendChild(htr);
+  rows.forEach((row,ri)=>{
+    const tr=document.createElement('tr');
+    const rnum=document.createElement('td');rnum.textContent=ri+1;rnum.style.background='#f0f0ee';rnum.style.color='#888';rnum.style.textAlign='center';rnum.style.fontSize='10px';tr.appendChild(rnum);
+    for(let c=0;c<maxCols;c++){
+      const td=document.createElement('td');
+      td.textContent=row[c]!==undefined?String(row[c]):'';
+      const key=sheetName+'|'+ri+'|'+c;
+      const ch=chMap.get(key);
+      if(ch){
+        td.classList.add('cell-'+ch.type);
+        td.title=ch.type+': '+(ch.oldText||'(empty)')+' → '+(ch.newText||'(empty)');
+        td.style.cursor='pointer';td.dataset.id=ch.id;td.dataset.sheet=sheetName;td.dataset.row=ri;td.dataset.col=c;
+        td.addEventListener('click',()=>setActive(ch.id));
+      }
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  });
+  t.appendChild(thead);t.appendChild(tbody);tw.appendChild(t);container.appendChild(tw);
+}
+
+// ── PDF renderer ──────────────────────────────────────────────
+async function renderPdfPane(container,content,byIdx,side){
+  container.innerHTML='<div class="loading-pane"><i class="ti ti-loader spin"></i> Rendering PDF…</div>';
+  if(!content.pdfDoc){container.innerHTML='<div class="loading-pane">PDF not available</div>';return;}
+  const wrap=document.createElement('div');wrap.className='pdf-wrap';
+  container.innerHTML='';container.appendChild(wrap);
+  const scale=1.5;
+  // Build a sentence→page+item lookup from pageTexts
+  const sentMap=buildPdfSentMap(content,byIdx);
+  for(let p=1;p<=content.pageCount;p++){
+    try{
+      const page=await content.pdfDoc.getPage(p);
+      const vp=page.getViewport({scale});
+      const pageWrap=document.createElement('div');pageWrap.className='pdf-page-wrap';
+      pageWrap.style.width=vp.width+'px';pageWrap.style.height=vp.height+'px';
+      // canvas
+      const canvas=document.createElement('canvas');
+      canvas.width=vp.width;canvas.height=vp.height;
+      await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+      pageWrap.appendChild(canvas);
+      // highlight overlay
+      const hlCanvas=document.createElement('canvas');
+      hlCanvas.width=vp.width;hlCanvas.height=vp.height;
+      hlCanvas.className='pdf-hl-overlay';
+      hlCanvas.style.width=vp.width+'px';hlCanvas.style.height=vp.height+'px';
+      hlCanvas.style.position='absolute';hlCanvas.style.top='0';hlCanvas.style.left='0';
+      hlCanvas.style.pointerEvents='none';
+      pageWrap.appendChild(hlCanvas);
+      // draw highlights for changes on this page
+      const ctx=hlCanvas.getContext('2d');
+      const tc=await page.getTextContent();
+      await drawPdfHighlights(ctx,tc,vp,page,sentMap,p,content,byIdx,pageWrap);
+      wrap.appendChild(pageWrap);
+    }catch(e){console.warn('PDF page error',p,e);}
+  }
+}
+
+function buildPdfSentMap(content,byIdx){
+  // Map: sentIdx → change
+  const map=new Map();
+  byIdx.forEach((ch,idx)=>map.set(idx,ch));
+  return map;
+}
+
+async function drawPdfHighlights(ctx,tc,vp,page,sentMap,pageNum,content,byIdx,pageWrap){
+  // Get all text items with transforms
+  const items=tc.items;
+  if(!items.length)return;
+  // Build full page text and find which sentences appear on this page
+  const pageText=content.pageTexts[pageNum-1]||'';
+  const hlColors={'added':'rgba(34,197,94,.35)','deleted':'rgba(239,68,68,.35)','modified':'rgba(245,158,11,.35)','moved':'rgba(167,139,250,.35)'};
+  // For each change, check if the sentence text appears on this page
+  byIdx.forEach((ch,idx)=>{
+    const sentText=(ch.oldText||ch.newText||'').trim();
+    if(!sentText||sentText.length<5)return;
+    const snippet=sentText.slice(0,40).toLowerCase();
+    if(!pageText.toLowerCase().includes(snippet))return;
+    // Find bounding box of the matching text items
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    let found=false;
+    const words=snippet.split(/\s+/).filter(w=>w.length>3);
+    for(let i=0;i<items.length;i++){
+      const item=items[i];
+      const itxt=(item.str||'').toLowerCase();
+      if(words.some(w=>itxt.includes(w))){
+        const tx=item.transform;
+        const x=tx[4]*vp.scale,y=vp.height-tx[5]*vp.scale;
+        const w=item.width*vp.scale,h=Math.abs(item.height||12)*vp.scale||14;
+        if(x<minX)minX=x;if(y-h<minY)minY=y-h;
+        if(x+w>maxX)maxX=x+w;if(y>maxY)maxY=y;
+        found=true;
+      }
+    }
+    if(found&&maxX>minX){
+      const color=hlColors[ch.type]||'rgba(245,158,11,.35)';
+      ctx.fillStyle=color;
+      ctx.fillRect(minX-2,minY-2,maxX-minX+4,maxY-minY+4);
+      ctx.strokeStyle=color.replace('.35','.8');
+      ctx.lineWidth=1.5;
+      ctx.strokeRect(minX-2,minY-2,maxX-minX+4,maxY-minY+4);
+      // make it clickable
+      const div=document.createElement('div');
+      div.style.cssText=`position:absolute;left:${minX-2}px;top:${minY-2}px;width:${maxX-minX+4}px;height:${maxY-minY+4}px;cursor:pointer;z-index:10`;
+      div.title=ch.type+': '+sentText.slice(0,80);
+      div.dataset.id=ch.id;
+      div.addEventListener('click',()=>setActive(ch.id));
+      pageWrap.appendChild(div);
+    }
+  });
+}
+
+// ── Change list rendering ─────────────────────────────────────
+function renderList(){
+  const{changes,filter,search}=S;
+  S.filtered=changes.filter(c=>{
+    if(filter==='high_impact'&&!['high','critical'].includes(c.sev))return false;
+    if(filter!=='all'&&filter!=='high_impact'&&c.type!==filter&&!c.cats?.includes(filter))return false;
+    if(search){const q=search.toLowerCase();if(!c.oldText?.toLowerCase().includes(q)&&!c.newText?.toLowerCase().includes(q))return false;}
+    return true;
+  });
+  const cl=$('change-list');cl.innerHTML='';
+  if(!S.filtered.length){cl.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">No changes match</div>';return;}
+  const cbM={added:'cb-add',deleted:'cb-del',modified:'cb-mod',moved:'cb-mov'};
+  const csM={low:'cs-low',medium:'cs-med',high:'cs-high',critical:'cs-crit'};
+  S.filtered.forEach(c=>{
+    const d=document.createElement('div');
+    d.className='ci'+(S.active?.id===c.id?' active':'');d.dataset.id=c.id;
+    let pills='';
+    if(c.cats?.includes('financial'))pills+=`<span class="cpill" style="background:var(--amber-bg);color:var(--amber)">fin</span>`;
+    if(c.cats?.includes('numeric'))pills+=`<span class="cpill" style="background:var(--blue-bg);color:var(--blue)">num</span>`;
+    if(c.cats?.includes('date'))pills+=`<span class="cpill" style="background:var(--purple-bg);color:var(--purple)">date</span>`;
+    if(c.sheet)pills+=`<span class="cpill" style="background:var(--card);color:var(--text2)">${c.sheet}!${c.cellRef||''}</span>`;
+    if(c.section)pills+=`<span class="cpill" style="background:var(--card);color:var(--text2)">${esc(c.section.slice(0,32))}</span>`;
+    const preview=esc((c.oldText||c.newText).slice(0,120));
+    d.innerHTML=`<div class="ci-head"><span class="cnum">#${c.id}</span><span class="cbadge ${cbM[c.type]||'cb-mod'}">${c.type}</span><span class="csev ${csM[c.sev]||'cs-low'}">${c.sev}</span></div><div class="ci-text">${preview}</div>${pills?`<div class="ci-pills">${pills}</div>`:''}`;
+    d.addEventListener('click',()=>setActive(c.id));
+    cl.appendChild(d);
+  });
+}
+
+// ── Set active change ─────────────────────────────────────────
+function activateXlsxSheet(side,sheet){
+  if(!sheet)return;
+  const pane=$('pane-'+side),tab=[...pane.querySelectorAll('.sheet-tab')].find(t=>t.dataset.sheet===sheet);
+  if(tab&&!tab.classList.contains('on'))tab.click();
+}
+function focusElementInPane(side,id,ch,behavior='auto'){
+  const pane=$('pane-'+side);if(!pane)return false;
+  pane.querySelectorAll('.focus-ring').forEach(el=>el.classList.remove('focus-ring'));
+  if(ch?.sheet)activateXlsxSheet(side,ch.sheet);
+  let el=pane.querySelector(`[data-id="${id}"]`);
+  const blockKey=side==='old'?'oldBlockIdx':'newBlockIdx';
+  if(!el&&ch&&ch[blockKey]>=0)el=pane.querySelector(`[data-diffiq-block="${ch[blockKey]}"]`);
+  if(!el&&ch?.sheet){
+    el=pane.querySelector(`[data-sheet="${CSS.escape(ch.sheet)}"][data-row="${ch.row}"][data-col="${ch.col}"]`);
+  }
+  if(!el)return false;
+  el.classList.add('focus-ring');
+  // Scroll the pane itself instead of the document/window. This is deterministic
+  // even when both panes have different heights.
+  const target=Math.max(0,el.offsetTop-(pane.clientHeight/2)+(el.offsetHeight/2));
+  pane.scrollTo({top:target,behavior});
+  return true;
+}
+function nearestCounterpartBlock(side,ch){
+  const key=side==='old'?'oldBlockIdx':'newBlockIdx';
+  if(ch[key]>=0)return ch[key];
+  const other=side==='old'?'newBlockIdx':'oldBlockIdx',pos=ch[other];
+  let best=null,bestDist=Infinity;
+  for(const c of S.changes){
+    if(c[key]<0||c[other]<0)continue;
+    const d=Math.abs(c[other]-pos);if(d<bestDist){bestDist=d;best=c[key];}
+  }
+  return best;
+}
+function setActive(id){
+  const ch=S.changes.find(c=>c.id===id);if(!ch)return;S.active=ch;
+  document.querySelectorAll('.ci').forEach(el=>el.classList.toggle('active',el.dataset.id==id));
+  // Suspend proportional sync while jumping. Smooth scrolling in both panes used
+  // to trigger competing scroll events and could pull the user away from the change.
+  S.isNavigating=true;
+  let oldFound=focusElementInPane('old',id,ch,'auto');
+  let newFound=focusElementInPane('new',id,ch,'auto');
+  if(!oldFound){const bi=nearestCounterpartBlock('old',ch);if(bi!==null){const el=$('pane-old').querySelector(`[data-diffiq-block="${bi}"]`);if(el){el.classList.add('focus-ring');$('pane-old').scrollTop=Math.max(0,el.offsetTop-$('pane-old').clientHeight/2);}}}
+  if(!newFound){const bi=nearestCounterpartBlock('new',ch);if(bi!==null){const el=$('pane-new').querySelector(`[data-diffiq-block="${bi}"]`);if(el){el.classList.add('focus-ring');$('pane-new').scrollTop=Math.max(0,el.offsetTop-$('pane-new').clientHeight/2);}}}
+  const listItem=$('change-list')?.querySelector(`.ci[data-id="${id}"]`);if(listItem)listItem.scrollIntoView({block:'nearest'});
+  renderDetail(ch);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{S.isNavigating=false;}));
+}
+let syncCleanup=null;
+function setupSyncScroll(){
+  if(syncCleanup)syncCleanup();
+  const a=$('pane-old'),b=$('pane-new');if(!a||!b)return;
+  let lock=false;
+  const sync=(src,dst)=>()=>{
+    if(!S.syncScroll||S.isNavigating||lock)return;lock=true;
+    const maxS=Math.max(1,src.scrollHeight-src.clientHeight),maxD=Math.max(0,dst.scrollHeight-dst.clientHeight);
+    dst.scrollTop=(src.scrollTop/maxS)*maxD;requestAnimationFrame(()=>lock=false);
+  };
+  const fa=sync(a,b),fb=sync(b,a);a.addEventListener('scroll',fa,{passive:true});b.addEventListener('scroll',fb,{passive:true});
+  syncCleanup=()=>{a.removeEventListener('scroll',fa);b.removeEventListener('scroll',fb);};
+}
+
+// ── Detail panel ──────────────────────────────────────────────
+function renderDetail(ch){
+  const dp=$('detail');
+  if(!ch){dp.innerHTML='<div class="detail-empty"><i class="ti ti-hand-click" style="font-size:15px"></i> Select a change to see details</div>';return;}
+  const cbM={added:'cb-add',deleted:'cb-del',modified:'cb-mod',moved:'cb-mov'};
+  const csM={low:'cs-low',medium:'cs-med',high:'cs-high',critical:'cs-crit'};
+  let catPills=(ch.cats||[]).map(c=>`<span class="cpill" style="background:var(--card);color:var(--text2);font-size:10px">${c}</span>`).join('');
+  if(ch.sheet)catPills+=`<span class="cpill" style="background:var(--card);color:var(--text2);font-size:10px">${ch.sheet}!${ch.cellRef||''}</span>`;
+  const oldBox=ch.type!=='added'&&ch.oldText?`<div class="di-col"><div class="di-label">Old</div><div class="di-box di-old">${inlineDiff(ch.oldText,ch.newText,'old')}</div></div>`:'';
+  const newBox=ch.type!=='deleted'&&ch.newText?`<div class="di-col"><div class="di-label">New</div><div class="di-box di-new">${inlineDiff(ch.oldText,ch.newText,'new')}</div></div>`:'';
+  let chips='';
+  if(ch.rmText)chips+=`<span class="dchip dch-rm">− ${esc(ch.rmText.slice(0,80))}${ch.rmText.length>80?'…':''}</span>`;
+  if(ch.addText)chips+=`<span class="dchip dch-add">+ ${esc(ch.addText.slice(0,80))}${ch.addText.length>80?'…':''}</span>`;
+  dp.innerHTML=`<div class="detail-inner"><div class="di-meta"><span class="di-id">Change #${ch.id}</span><span class="cbadge ${cbM[ch.type]||'cb-mod'}">${ch.type}</span><span class="csev ${csM[ch.sev]||'cs-low'}">${ch.sev}</span>${catPills}${ch.sim!==undefined?`<span class="di-sim">${ch.sim}% similar</span>`:''}</div><div class="di-cols">${oldBox}${newBox}</div>${chips?`<div class="di-chips">${chips}</div>`:''}</div>`;
+}
+
+// ── Wire buttons ──────────────────────────────────────────────
+$('btn-compare').addEventListener('click',runCompare);
+$('btn-back').addEventListener('click',()=>showPage('upload'));
+$('btn-new').addEventListener('click',()=>showPage('upload'));
+$('btn-prev').addEventListener('click',()=>{const i=S.filtered.findIndex(c=>c.id===S.active?.id);if(i>0)setActive(S.filtered[i-1].id);});
+$('btn-next').addEventListener('click',()=>{const i=S.filtered.findIndex(c=>c.id===S.active?.id);if(i<S.filtered.length-1)setActive(S.filtered[i+1].id);});
+$('btn-sync').addEventListener('click',()=>{S.syncScroll=!S.syncScroll;$('btn-sync').setAttribute('aria-pressed',String(S.syncScroll));$('btn-sync').classList.toggle('btn-primary',S.syncScroll);});
+$('btn-sync').classList.add('btn-primary');
+$('btn-export').addEventListener('click',()=>{
+  if(!S.changes.length)return;
+  const rows=[['#','Type','Severity','Sheet','Cell','Categories','Old text','New text','Removed','Added']];
+  S.changes.forEach(c=>rows.push([c.id,c.type,c.sev,c.sheet||'',c.cellRef||'',(c.cats||[]).join(';'),c.oldText,c.newText,c.rmText,c.addText]));
+  const safeCsv=v=>{let x=String(v??'');if(/^[=+@]/.test(x)||(/^-/).test(x)&&!/^-[0-9.]+$/.test(x))x="'"+x;return '"'+x.replace(/"/g,'""')+'"';};
+  const csv=rows.map(r=>r.map(safeCsv).join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='diffiq-changes.csv';a.click();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'&&S.active)$('btn-next').click();
+  if(e.key==='ArrowUp'&&S.active)$('btn-prev').click();
+});
+
+// ── PWA install + Service Worker ──────────────────────────────
+let deferredInstallPrompt=null;
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+function showPwaHelp(title,text){
+  $('pwa-toast-title').textContent=title;$('pwa-toast-text').textContent=text;$('pwa-toast').classList.remove('hidden');
+}
+$('pwa-toast-close').addEventListener('click',()=>$('pwa-toast').classList.add('hidden'));
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();deferredInstallPrompt=e;
+  $('btn-install').classList.add('install-ready');$('btn-install').title='Install DiffIQ on this device';
+});
+window.addEventListener('appinstalled',()=>{
+  deferredInstallPrompt=null;$('btn-install').classList.remove('install-ready');
+  showPwaHelp('DiffIQ installed','The app was installed successfully and can now be launched from your apps.');
+});
+$('btn-install').addEventListener('click',async()=>{
+  if(isStandalone){showPwaHelp('Already installed','DiffIQ is already running as an installed app.');return;}
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    try{await deferredInstallPrompt.userChoice;}catch(_){ }
+    deferredInstallPrompt=null;$('btn-install').classList.remove('install-ready');return;
+  }
+  if(location.protocol!=='https:'&&location.hostname!=='localhost'&&location.hostname!=='127.0.0.1'){
+    showPwaHelp('HTTPS required','Installable PWAs must be served over HTTPS (or localhost). Deploy this folder to Vercel/Netlify or run it on localhost; opening index.html directly will not show an install prompt.');return;
+  }
+  if(isIOS){showPwaHelp('Install on iPhone/iPad','Open this page in Safari, tap Share, then choose “Add to Home Screen”. iOS does not expose the normal browser install prompt.');return;}
+  showPwaHelp('Install from browser','The browser has not offered its install prompt yet. Reload once after the service worker finishes installing, then use the browser menu → “Install DiffIQ” / “Install app”. If it is already installed, the prompt will not appear again.');
+});
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',async()=>{
+    try{
+      const r=await navigator.serviceWorker.register('./sw.js',{scope:'./'});
+      console.log('[DiffIQ] SW registered',r.scope);
+      if(!navigator.serviceWorker.controller){console.log('[DiffIQ] First SW install complete; reload may be needed for installability.');}
+    }catch(e){
+      console.warn('[DiffIQ] SW failed',e);
+      showPwaHelp('Offline app unavailable','The service worker could not register. Make sure the app is served over HTTPS or localhost and sw.js is in the same folder as index.html.');
+    }
+  });
+}
+</script>
+</body>
+</html>
