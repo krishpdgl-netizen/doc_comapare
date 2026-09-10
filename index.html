@@ -9,13 +9,12 @@
 <meta name="apple-mobile-web-app-title" content="DiffIQ"/>
 <meta name="theme-color" content="#0d1117"/>
 <title>DiffIQ — Document Change Intelligence</title>
-<link rel="manifest" href="./manifest.json"/>
-<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png"/>
-<link rel="apple-touch-icon" href="./icon-192.png"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -157,7 +156,6 @@ button,input{font-family:inherit}
 .cb-del{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
 .cb-mod{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
 .cb-mov{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bd)}
-.cb-ren{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
 .csev{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:auto;text-transform:uppercase;letter-spacing:.03em}
 .cs-low{background:var(--card);color:var(--text3)}
 .cs-med{background:var(--amber-bg);color:var(--amber)}
@@ -204,7 +202,6 @@ button,input{font-family:inherit}
 .hl-del{background:rgba(239,68,68,.18)!important;border-left:3px solid #ef4444!important;padding-left:8px!important;border-radius:0 3px 3px 0!important;cursor:pointer}
 .hl-mod{background:rgba(245,158,11,.18)!important;border-left:3px solid #f59e0b!important;padding-left:8px!important;border-radius:0 3px 3px 0!important;cursor:pointer}
 .hl-mov{background:rgba(167,139,250,.18)!important;border-left:3px solid #a78bfa!important;padding-left:8px!important;border-radius:0 3px 3px 0!important;cursor:pointer}
-.hl-renumbered{background:rgba(59,130,246,.12)!important;border-left:3px solid #3b82f6!important;padding-left:8px!important;border-radius:0 3px 3px 0!important;cursor:pointer}
 .focus-ring{outline:2px solid #3b82f6!important;outline-offset:2px!important;border-radius:3px!important}
 mark.rm{background:rgba(239,68,68,.22);color:#b91c1c;border-radius:2px;padding:0 1px}
 mark.ad{background:rgba(34,197,94,.22);color:#15803d;border-radius:2px;padding:0 1px}
@@ -255,13 +252,6 @@ mark.ad{background:rgba(34,197,94,.22);color:#15803d;border-radius:2px;padding:0
 .dch-add{background:var(--green-dim);color:#86efac}
 
 .loading-pane{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text2);font-size:12px;gap:8px}
-
-/* PWA install helper */
-.pwa-toast{position:fixed;right:16px;bottom:16px;z-index:1000;width:min(390px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--border-hi);border-radius:10px;padding:13px 14px;box-shadow:0 18px 48px rgba(0,0,0,.38)}
-.pwa-toast-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px}
-.pwa-toast-text{font-size:11px;line-height:1.55;color:var(--text2);margin-bottom:10px}
-#btn-install.install-ready{border-color:var(--blue);color:#fff;background:var(--blue)}
-#btn-install.install-ready:hover{background:#2563eb}
 </style>
 </head>
 <body>
@@ -275,7 +265,6 @@ mark.ad{background:rgba(34,197,94,.22);color:#15803d;border-radius:2px;padding:0
     <div class="topbar-right">
       <button class="btn hidden" id="btn-new"><i class="ti ti-plus" style="font-size:12px" aria-hidden="true"></i> New</button>
       <button class="btn hidden" id="btn-export"><i class="ti ti-download" style="font-size:12px" aria-hidden="true"></i> Export CSV</button>
-      <button class="btn" id="btn-install" title="Install DiffIQ as an app"><i class="ti ti-device-desktop-down" style="font-size:12px" aria-hidden="true"></i> Install</button>
       <div class="avatar">KD</div>
     </div>
   </div>
@@ -392,7 +381,6 @@ mark.ad{background:rgba(34,197,94,.22);color:#15803d;border-radius:2px;padding:0
       <div id="doc-area">
         <div class="doc-toolbar">
           <span class="dt-label">Side-by-side comparison</span>
-          <button class="btn" id="btn-sync" aria-pressed="true" title="Synchronize pane scrolling"><i class="ti ti-arrows-vertical" style="font-size:11px" aria-hidden="true"></i> Sync scroll</button>
           <div class="legend">
             <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>Added</div>
             <div class="leg"><div class="leg-dot" style="background:var(--red)"></div>Deleted</div>
@@ -428,171 +416,104 @@ mark.ad{background:rgba(34,197,94,.22);color:#15803d;border-radius:2px;padding:0
     </div>
   </div>
 </div>
-<div id="pwa-toast" class="pwa-toast hidden" role="status" aria-live="polite">
-  <div class="pwa-toast-title" id="pwa-toast-title">Install DiffIQ</div>
-  <div class="pwa-toast-text" id="pwa-toast-text"></div>
-  <button class="btn" id="pwa-toast-close" type="button">Close</button>
-</div>
 
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 // ── File reading helpers ───────────────────────────────────────
-function readBuf(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=()=>rej(r.error||new Error('Failed to read file'));r.readAsArrayBuffer(file);});}
-function readTxt(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=()=>rej(r.error||new Error('Failed to read file'));r.readAsText(file);});}
-
-const MAX_FILE_BYTES=25*1024*1024;
-const SUPPORTED_EXT=new Set(['txt','md','csv','html','htm','json','pdf','docx','xlsx','xls','pptx']);
-function fileExt(file){return (file?.name?.split('.').pop()||'').toLowerCase();}
-function validateFile(file){
-  if(!file)throw new Error('No file selected.');
-  const ext=fileExt(file);
-  if(!SUPPORTED_EXT.has(ext))throw new Error('Unsupported file type: .'+ext);
-  if(file.size===0)throw new Error(file.name+' is empty.');
-  if(file.size>MAX_FILE_BYTES)throw new Error(file.name+' exceeds the 25 MB browser-processing limit.');
-  return ext;
-}
-function sanitizeDom(root){
-  root.querySelectorAll('script,style,iframe,object,embed,meta,link,base').forEach(el=>el.remove());
-  root.querySelectorAll('*').forEach(el=>{
-    [...el.attributes].forEach(a=>{
-      const n=a.name.toLowerCase(),v=(a.value||'').trim().toLowerCase();
-      if(n.startsWith('on')||n==='srcdoc'||((n==='href'||n==='src')&&v.startsWith('javascript:')))el.removeAttribute(a.name);
-    });
-  });
-  return root;
-}
-function blockTypeFor(el){
-  const tag=el.tagName.toLowerCase();
-  if(/^h[1-6]$/.test(tag))return'heading';
-  if(tag==='td'||tag==='th')return'table_cell';
-  if(tag==='li')return'list_item';
-  return'paragraph';
-}
-function normalizeBlockText(t,type='paragraph'){
-  let x=String(t||'').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim().toLowerCase();
-  if(type==='heading')x=x.replace(/^\s*(?:section\s+)?\d+(?:\.\d+)*[\s.)-]*/i,'');
-  return x;
-}
-function buildStructuredBlocks(root){
-  const all=[...root.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,td,th')].filter(el=>{
-    const tag=el.tagName.toLowerCase();
-    if((tag==='p'||tag==='li')&&el.closest('td,th'))return false;
-    return (el.innerText||el.textContent||'').trim().length>0;
-  });
-  let section='';
-  const tables=[...root.querySelectorAll('table')],tableIds=new Map(tables.map((t,i)=>[t,i]));
-  return all.map((el,index)=>{
-    const type=blockTypeFor(el),text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();
-    if(type==='heading')section=text;
-    let table=null,row=null,col=null,rowKey='',colKey='',tableKey='';
-    if(type==='table_cell'){
-      const t=el.closest('table');table=t?tableIds.get(t):null;
-      const rows=t?[...t.querySelectorAll('tr')]:[],tr=el.closest('tr');row=tr?rows.indexOf(tr):null;
-      const cells=tr?[...tr.children].filter(x=>/^(TD|TH)$/.test(x.tagName)):[];col=tr?cells.indexOf(el):null;
-      const firstCell=cells[0],headerCells=rows[0]?[...rows[0].children].filter(x=>/^(TD|TH)$/.test(x.tagName)):[];
-      rowKey=normalizeBlockText((firstCell?.innerText||firstCell?.textContent||'').trim());
-      colKey=normalizeBlockText((headerCells[col]?.innerText||headerCells[col]?.textContent||'').trim());
-      tableKey='table:'+table;
-    }
-    el.dataset.diffiqBlock=String(index);
-    return{index,type,text,norm:normalizeBlockText(text,type),section,table,row,col,rowKey,colKey,tableKey,
-      semanticKey:type==='table_cell'?`${tableKey}|${rowKey}|c${col}`:''};
-  });
-}
+function readBuf(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsArrayBuffer(file);});}
+function readTxt(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsText(file);});}
 
 // ── Extract content from any file type ───────────────────────
 async function extract(file){
-  const ext=validateFile(file);
+  const ext=file.name.split('.').pop().toLowerCase();
+
   if(['txt','md','json'].includes(ext)){
-    const text=await readTxt(file);return{type:'text',text,html:null};
+    const text=await readTxt(file);
+    return{type:'text',text,html:null};
   }
-  if(ext==='csv'){
-    const text=await readTxt(file),rows=parseCsv(text),blocks=[];
-    rows.forEach((row,r)=>row.forEach((v,c)=>{const t=String(v??'').trim();if(t)blocks.push({index:blocks.length,type:'table_cell',text:t,norm:normalizeBlockText(t),section:'CSV',table:0,row:r,col:c});}));
-    return{type:'csv',text,rows,blocks,html:null};
+  if(['csv'].includes(ext)){
+    const text=await readTxt(file);
+    // Parse CSV into a table for display
+    const rows=text.split('\n').map(r=>r.split(','));
+    return{type:'csv',text,rows,html:null};
   }
   if(['html','htm'].includes(ext)){
-    const raw=await readTxt(file),d=document.createElement('div');d.innerHTML=raw;sanitizeDom(d);
-    const blocks=buildStructuredBlocks(d),text=blocks.map(b=>b.text).join('\n');
-    return{type:'html',text,html:d.innerHTML,blocks};
+    const raw=await readTxt(file);
+    const d=document.createElement('div');
+    d.innerHTML=raw.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
+    const text=d.innerText||d.textContent||'';
+    return{type:'html',text,html:raw};
   }
   if(ext==='docx'){
-    const buf=await readBuf(file);
-    const res=await mammoth.convertToHtml({arrayBuffer:buf},{includeDefaultStyleMap:true});
-    const d=document.createElement('div');d.innerHTML=res.value;sanitizeDom(d);
-    const blocks=buildStructuredBlocks(d),text=blocks.map(b=>b.text).join('\n');
-    return{type:'docx',text,html:d.innerHTML,blocks,warnings:res.messages||[]};
+    try{
+      const buf=await readBuf(file);
+      const res=await mammoth.convertToHtml({arrayBuffer:buf});
+      const d=document.createElement('div');d.innerHTML=res.value;
+      return{type:'docx',text:d.innerText||'',html:res.value};
+    }catch(e){
+      return{type:'text',text:'[DOCX parse error: '+e.message+']',html:null};
+    }
   }
   if(['xlsx','xls'].includes(ext)){
-    const buf=await readBuf(file),wb=XLSX.read(buf,{type:'array',cellFormula:true,cellStyles:true,cellDates:true});
-    let allText='';const sheets={},sheetMeta={};
-    wb.SheetNames.forEach(name=>{
-      const ws=wb.Sheets[name],range=ws['!ref']?XLSX.utils.decode_range(ws['!ref']):{s:{r:0,c:0},e:{r:-1,c:-1}};
-      const rows=[],meta=[];
-      for(let r=range.s.r;r<=range.e.r;r++){
-        const rr=[],mm=[];
-        for(let c=range.s.c;c<=range.e.c;c++){
-          const ref=XLSX.utils.encode_cell({r,c}),cell=ws[ref];
-          const value=cell?(cell.w??cell.v??''):'';
-          rr.push(value);mm.push(cell?{v:cell.v??'',w:cell.w??'',f:cell.f||'',t:cell.t||'',z:cell.z||''}:{v:'',w:'',f:'',t:'',z:''});
-        }
-        rows.push(rr);meta.push(mm);allText+=rr.join('\t')+'\n';
-      }
-      sheets[name]=rows;sheetMeta[name]=meta;
-    });
-    return{type:'xlsx',text:allText,sheets,sheetMeta,sheetNames:wb.SheetNames,html:null};
-  }
-  if(ext==='pptx'){
-    const buf=await readBuf(file),zip=await JSZip.loadAsync(buf),slides=[];
-    const names=Object.keys(zip.files).filter(n=>/^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a,b)=>Number(a.match(/slide(\d+)/)[1])-Number(b.match(/slide(\d+)/)[1]));
-    for(const name of names){
-      const xml=await zip.file(name).async('text'),doc=new DOMParser().parseFromString(xml,'application/xml');
-      const texts=[...doc.getElementsByTagNameNS('*','t')].map(n=>n.textContent||'').filter(Boolean);
-      slides.push({slide:Number(name.match(/slide(\d+)/)[1]),text:texts.join(' ')});
+    try{
+      const buf=await readBuf(file);
+      const wb=XLSX.read(buf,{type:'array'});
+      // Extract text for diffing, keep workbook for rendering
+      let allText='';
+      const sheets={};
+      wb.SheetNames.forEach(name=>{
+        const ws=wb.Sheets[name];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        sheets[name]=rows;
+        rows.forEach(row=>{ allText+=row.join('\t')+'\n'; });
+      });
+      return{type:'xlsx',text:allText,sheets,sheetNames:wb.SheetNames,html:null};
+    }catch(e){
+      return{type:'text',text:'[XLSX parse error: '+e.message+']',html:null};
     }
-    const text=slides.map(s=>'Slide '+s.slide+'\n'+s.text).join('\n\n');
-    const blocks=slides.map((s,i)=>({index:i,type:'slide',text:s.text,norm:normalizeBlockText(s.text),section:'Slide '+s.slide,slide:s.slide}));
-    return{type:'pptx',text,slides,blocks,html:null};
   }
   if(ext==='pdf'){
+    // Load PDF.js on demand (legacy UMD build, no module)
     if(!window.pdfjsLib){
-      await new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';sc.onload=res;sc.onerror=()=>rej(new Error('Could not load PDF engine'));document.head.appendChild(sc);});
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
+      });
       window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
-    const buf=await readBuf(file),pdfDoc=await window.pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
-    const pageCount=pdfDoc.numPages;let text='';const pageTexts=[],blocks=[];
-    for(let p=1;p<=pageCount;p++){
-      const page=await pdfDoc.getPage(p),tc=await page.getTextContent();
-      const pt=tc.items.map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();pageTexts.push(pt);text+=pt+'\n\n';
-      if(pt)blocks.push({index:blocks.length,type:'pdf_page',text:pt,norm:normalizeBlockText(pt),section:'Page '+p,page:p});
+    try{
+      const buf=await readBuf(file);
+      const pdfDoc=await window.pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+      const pageCount=pdfDoc.numPages;
+      let text='';
+      const pageTexts=[];
+      const pageData=[];
+      for(let p=1;p<=pageCount;p++){
+        const page=await pdfDoc.getPage(p);
+        const tc=await page.getTextContent();
+        // store items with their transforms for precise highlighting
+        const items=tc.items.filter(i=>i.str&&i.str.trim());
+        const pt=items.map(i=>i.str).join(' ');
+        pageTexts.push(pt);
+        pageData.push(items);
+        text+=pt+'\n\n';
+      }
+      return{type:'pdf',text:text.trim(),html:null,pdfDoc,pageCount,pageTexts,pageData};
+    }catch(e){
+      return{type:'text',text:'[PDF parse error: '+e.message+']',html:null};
     }
-    return{type:'pdf',text:text.trim(),html:null,pdfDoc,pageCount,pageTexts,blocks};
   }
-  throw new Error('Unsupported file format.');
-}
-
-function parseCsv(text){
-  const rows=[];let row=[],cell='',q=false;
-  for(let i=0;i<text.length;i++){
-    const ch=text[i];
-    if(ch==='"'){
-      if(q&&text[i+1]==='"'){cell+='"';i++;}else q=!q;
-    }else if(ch===','&&!q){row.push(cell);cell='';}
-    else if((ch==='\n'||ch==='\r')&&!q){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cell);rows.push(row);row=[];cell='';}
-    else cell+=ch;
-  }
-  if(cell.length||row.length){row.push(cell);rows.push(row);}return rows;
+  // fallback
+  try{const text=await readTxt(file);return{type:'text',text,html:null};}
+  catch(e){return{type:'text',text:'[Cannot read: '+file.name+']',html:null};}
 }
 
 // ── Diff engine ───────────────────────────────────────────────
-function tokenize(t){
-  // Keep business-critical values atomic so Indian currency/date changes are not
-  // fragmented into pieces such as "52 00" and "61 50".
-  const re=/(\s+|(?:₹|\$|£|€)\s*[\d,]+(?:\.\d+)?(?:\s*(?:lakh|lac|crore|cr|million|billion|k))?|\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4}\b|\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}\b|\b\d{4}[\/\-]\d{2}[\/\-]\d{2}\b|\b[\d,]+(?:\.\d+)?%|\b[\d,]+(?:\.\d+)?(?:\s*(?:days?|business\s+days?|months?|years?|hours?|hrs?|minutes?|mins?))?\b|[A-Za-zÀ-ÖØ-öø-ÿ]+(?:['’][A-Za-zÀ-ÖØ-öø-ÿ]+)?|[^\w\s])/gi;
-  return String(t||'').match(re)||[];
-}
+function tokenize(t){return t.split(/(\s+|[^\w\s]+)/).filter(x=>x.length);}
 function jaccard(a,b){
   const sa=new Set(a.toLowerCase().split(/\s+/));
   const sb=new Set(b.toLowerCase().split(/\s+/));
@@ -622,144 +543,27 @@ function inlineDiff(o,n,side){
   else nt.forEach((t,i)=>h+=ln.has(i)?esc(t):`<mark class="ad">${esc(t)}</mark>`);
   return h;
 }
-function formatChangedTokens(tokens){
-  const meaningful=(tokens||[]).filter(t=>!/^\s+$/.test(t));
-  return meaningful.join(' ').replace(/\s+([,.;:!?%])/g,'$1').replace(/([₹$£€])\s+/g,'$1').replace(/\s+([)\]])/g,'$1').replace(/([(\[])\s+/g,'$1').trim();
-}
-
 function splitSents(t){
   return t.replace(/\r\n/g,'\n').split(/(?<=[.!?\n])\s+/).map(s=>s.trim()).filter(Boolean);
 }
 function classify(o,n){
-  const numRe=/(?:₹|\$|£|€)?\s*[\d,]+(?:\.\d+)?(?:\s*(?:lakh|lac|crore|cr|million|billion|k|%|days?|business\s+days?|months?|years?|hours?|hrs?))?/gi;
-  const dateRe=/\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}\b|\b\d{4}[\/\-]\d{2}[\/\-]\d{2}\b|\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4}\b/gi;
-  const fin=/payment|price|cost|fee|penalty|liability|value|amount|contract|revenue|salary|bonus|rate|invoice|commercial/i;
-  const leg=/\b(shall|must|may|obligation|terminat|notice|indemnif|warrant|liable|liability|breach|default|confidential|compliance)\b/i;
-  const security=/security|data protection|encryption|incident|penetration test|business continuity|disaster recovery/i;
-  const cats=[],on=(o.match(numRe)||[]).join('|'),nn=(n.match(numRe)||[]).join('|'),od=(o.match(dateRe)||[]).join('|'),nd=(n.match(dateRe)||[]).join('|');
-  if(on!==nn)cats.push('numeric');if(od!==nd)cats.push('date');if(fin.test(o)||fin.test(n))cats.push('financial');if(leg.test(o)||leg.test(n))cats.push('legal');if(security.test(o)||security.test(n))cats.push('security');
-  const sim=jaccard(o,n),modal=x=>((x.match(/\b(shall|must|may|will)\b/i)||[])[1]||'').toLowerCase();
-  const modalChanged=modal(o)!==modal(n)&&(modal(o)||modal(n));
-  const negChanged=/\b(not|never|no)\b/i.test(o)!==/\b(not|never|no)\b/i.test(n);
+  const numRe=/[\$\u20b9\u00a3\u20ac]?\s*[\d,]+(?:\.\d+)?(?:\s*(?:lakh|crore|million|billion|k|%|days?|months?|years?))?/gi;
+  const dateRe=/\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}\b|\b\d{4}[\/\-]\d{2}[\/\-]\d{2}\b/gi;
+  const fin=/payment|price|cost|fee|penalty|liability|value|amount|contract|revenue|salary|bonus|rate/i;
+  const leg=/\b(shall|must|obligation|terminat|notice|indemnif|warrant|liable|breach|default)\b/i;
+  const cats=[];
+  if((o.match(numRe)||[]).join()!==(n.match(numRe)||[]).join()) cats.push('numeric');
+  if((o.match(dateRe)||[]).join()!==(n.match(dateRe)||[]).join()) cats.push('date');
+  if(fin.test(o)||fin.test(n)) cats.push('financial');
+  if(leg.test(o)||leg.test(n)) cats.push('legal');
+  const sim=jaccard(o,n);
   let sev='low';
-  if(!o||!n)sev=(cats.includes('legal')||cats.includes('financial')||cats.includes('security'))?'high':'medium';
-  else if(negChanged)sev='critical';
-  else if(modalChanged&&cats.includes('legal'))sev='high';
-  else if(cats.includes('financial')&&cats.includes('numeric'))sev='high';
-  else if(cats.includes('legal')&&(cats.includes('numeric')||cats.includes('date')))sev='high';
-  else if(cats.includes('security')&&(cats.includes('numeric')||cats.includes('date')))sev='high';
-  else if(cats.includes('numeric')||cats.includes('date'))sev='medium';
-  else if(sim<0.35)sev='medium';
+  if(cats.includes('numeric')||cats.includes('date')) sev='medium';
+  if(sim<0.35) sev='high';
+  if(cats.includes('financial')&&cats.includes('numeric')) sev='high';
+  if(sim<0.1) sev='critical';
   return{cats,sev,sim:Math.round(sim*100)};
 }
-
-function blockSimilarity(a,b){
-  if(!a||!b)return 0;
-  if(a.type!==b.type && !(a.type==='paragraph'&&b.type==='list_item') && !(a.type==='list_item'&&b.type==='paragraph'))return 0;
-  if(a.type==='table_cell'&&b.type==='table_cell'){
-    // Never globally fuzzy-match values from unrelated table rows. A date in
-    // "Effective Date" must not be paired with a milestone date just because
-    // both happen to look like dates.
-    if(a.table!==b.table||a.col!==b.col)return 0;
-    if(a.semanticKey&&b.semanticKey&&a.semanticKey===b.semanticKey)return Math.max(.96,jaccard(a.text,b.text));
-    if(a.rowKey&&b.rowKey&&a.rowKey!==b.rowKey)return 0;
-    if(a.row===b.row)return Math.max(.72,jaccard(a.text,b.text));
-    return 0;
-  }
-  const jac=jaccard(a.norm,b.norm),aa=a.norm,bb=b.norm;
-  if(!aa&&!bb)return 1;if(!aa||!bb)return 0;
-  let prefix=0,lim=Math.min(aa.length,bb.length,80);while(prefix<lim&&aa[prefix]===bb[prefix])prefix++;
-  const pre=lim?prefix/lim:0;
-  return Math.min(1,jac*.82+pre*.18);
-}
-function currentSensitivity(){return S?.sensitivity||'balanced';}
-function matchThreshold(type){
-  const sens=currentSensitivity();
-  if(type==='heading')return sens==='semantic'?.34:sens==='strict'?.68:.48;
-  if(type==='table_cell')return sens==='semantic'?.28:sens==='strict'?.58:.40;
-  return sens==='semantic'?.30:sens==='strict'?.62:.42;
-}
-function blockExactKey(b){
-  if(b?.type==='table_cell')return `table_cell|${b.semanticKey||('t'+b.table+'|r'+b.row+'|c'+b.col)}|${b.norm}`;
-  return (b?.type||'')+'|'+(b?.norm||'');
-}
-function lcsBlockPairs(oldBlocks,newBlocks){
-  const a=oldBlocks.map(blockExactKey),b=newBlocks.map(blockExactKey);
-  if(a.length*b.length<=1500000)return lcs(a,b);
-  // Memory-safe fallback for very large documents: greedy exact anchors.
-  const positions=new Map();b.forEach((k,j)=>{if(!positions.has(k))positions.set(k,[]);positions.get(k).push(j);});
-  const out=[];let last=-1;
-  for(let i=0;i<a.length;i++){
-    const arr=positions.get(a[i]);if(!arr)continue;
-    const j=arr.find(x=>x>last);if(j!==undefined){out.push([i,j]);last=j;}
-  }
-  return out;
-}
-function makeBlockChange(id,type,o,n,oi,ni,simOverride){
-  const ot=o?.text||'',nt=n?.text||'',cl=classify(ot,nt);
-  const ot2=tokenize(ot),nt2=tokenize(nt),L=lcs(ot2,nt2),lo=new Set(L.map(([a])=>a)),ln=new Set(L.map(([,b])=>b));
-  const similarity=simOverride!==undefined?Math.round(simOverride*100):cl.sim;
-  const confidence=(type==='added'||type==='deleted'||type==='moved'||type==='renumbered')?100:Math.max(60,Math.min(99,Math.round(65+similarity*.34)));
-  return{id,type,oldText:ot,newText:nt,oldIdx:oi,newIdx:ni,oldBlockIdx:oi,newBlockIdx:ni,
-    section:n?.section||o?.section||'',blockType:n?.type||o?.type||'paragraph',
-    table:n?.table??o?.table,row:n?.row??o?.row,col:n?.col??o?.col,rowKey:n?.rowKey||o?.rowKey||'',colKey:n?.colKey||o?.colKey||'',slide:n?.slide??o?.slide,page:n?.page??o?.page,
-    ...cl,sim:similarity,confidence,
-    rmText:type==='added'?'':formatChangedTokens(ot2.filter((_,k)=>!lo.has(k))),
-    addText:type==='deleted'?'':formatChangedTokens(nt2.filter((_,k)=>!ln.has(k)))};
-}
-function diffBlocks(oldBlocks,newBlocks){
-  oldBlocks=oldBlocks||[];newBlocks=newBlocks||[];const changes=[];let id=1;
-  const exact=lcsBlockPairs(oldBlocks,newBlocks),matchedO=new Set(exact.map(x=>x[0])),matchedN=new Set(exact.map(x=>x[1]));
-
-  // Headings can be semantically identical while their numbering changes. Keep
-  // these out of "moved" noise and report the actual metadata change.
-  for(const[i,j]of exact){
-    const o=oldBlocks[i],n=newBlocks[j];
-    if(o.type==='heading'&&n.type==='heading'&&o.norm===n.norm&&o.text!==n.text){
-      const ch=makeBlockChange(id++,'renumbered',o,n,i,j,1);ch.sev='low';ch.cats=[...(ch.cats||[]),'structure'];changes.push(ch);
-    }
-  }
-
-  // Exact blocks outside the LCS are true moves/reorders, not delete+add.
-  const newByKey=new Map();
-  newBlocks.forEach((b,j)=>{if(matchedN.has(j)||b.type==='table_cell')return;const k=blockExactKey(b);if(!newByKey.has(k))newByKey.set(k,[]);newByKey.get(k).push(j);});
-  for(let i=0;i<oldBlocks.length;i++){
-    if(matchedO.has(i))continue;const o=oldBlocks[i];if(o.type==='table_cell')continue;const k=blockExactKey(o),arr=newByKey.get(k);
-    if(arr?.length){const j=arr.shift();matchedO.add(i);matchedN.add(j);changes.push(makeBlockChange(id++,'moved',o,newBlocks[j],i,j,1));}
-  }
-
-  // Table values are paired by table + stable row label + column before any
-  // fuzzy matching. This fixes cross-row date/amount mismatches.
-  const newTableBySemantic=new Map();
-  newBlocks.forEach((b,j)=>{if(matchedN.has(j)||b.type!=='table_cell'||!b.semanticKey)return;if(!newTableBySemantic.has(b.semanticKey))newTableBySemantic.set(b.semanticKey,[]);newTableBySemantic.get(b.semanticKey).push(j);});
-  for(let i=0;i<oldBlocks.length;i++){
-    const o=oldBlocks[i];if(matchedO.has(i)||o.type!=='table_cell'||!o.semanticKey)continue;
-    const arr=newTableBySemantic.get(o.semanticKey);if(!arr?.length)continue;
-    const j=arr.shift(),n=newBlocks[j];matchedO.add(i);matchedN.add(j);
-    if(o.text!==n.text)changes.push(makeBlockChange(id++,'modified',o,n,i,j,blockSimilarity(o,n)));
-  }
-
-  // Fuzzy modified pairing for remaining non-table blocks (and only safely
-  // constrained table cells via blockSimilarity).
-  const candidates=[];
-  for(let i=0;i<oldBlocks.length;i++)if(!matchedO.has(i)){
-    for(let j=0;j<newBlocks.length;j++)if(!matchedN.has(j)){
-      const o=oldBlocks[i],n=newBlocks[j];let score=blockSimilarity(o,n);
-      if(o.type==='slide'&&n.type==='slide'&&o.slide===n.slide)score=Math.max(score,.65);
-      if(score>=matchThreshold(o.type))candidates.push({i,j,score});
-    }
-  }
-  candidates.sort((a,b)=>b.score-a.score||Math.abs(a.i-a.j)-Math.abs(b.i-b.j));
-  for(const c of candidates){
-    if(matchedO.has(c.i)||matchedN.has(c.j))continue;
-    matchedO.add(c.i);matchedN.add(c.j);changes.push(makeBlockChange(id++,'modified',oldBlocks[c.i],newBlocks[c.j],c.i,c.j,c.score));
-  }
-  for(let i=0;i<oldBlocks.length;i++)if(!matchedO.has(i))changes.push(makeBlockChange(id++,'deleted',oldBlocks[i],null,i,-1,0));
-  for(let j=0;j<newBlocks.length;j++)if(!matchedN.has(j))changes.push(makeBlockChange(id++,'added',null,newBlocks[j],-1,j,0));
-  changes.sort((a,b)=>{const ap=a.newIdx>=0?a.newIdx:a.oldIdx,bp=b.newIdx>=0?b.newIdx:b.oldIdx;return ap-bp||a.id-b.id;});
-  changes.forEach((c,k)=>c.id=k+1);return changes;
-}
-
 function diffTexts(ot,nt){
   const os=splitSents(ot),ns=splitSents(nt);
   const changes=[];let id=1;
@@ -802,23 +606,21 @@ function diffTexts(ot,nt){
 // ── XLSX cell-level diff ──────────────────────────────────────
 function diffXlsx(oldC,newC){
   const changes=[];let id=1;
-  const oldSheets=oldC.sheets||{},newSheets=newC.sheets||{},oldMeta=oldC.sheetMeta||{},newMeta=newC.sheetMeta||{};
+  const oldSheets=oldC.sheets||{},newSheets=newC.sheets||{};
   const allSheets=new Set([...Object.keys(oldSheets),...Object.keys(newSheets)]);
   allSheets.forEach(sheet=>{
-    const oRows=oldSheets[sheet]||[],nRows=newSheets[sheet]||[],om=oldMeta[sheet]||[],nm=newMeta[sheet]||[];
+    const oRows=oldSheets[sheet]||[],nRows=newSheets[sheet]||[];
     const maxR=Math.max(oRows.length,nRows.length);
     for(let r=0;r<maxR;r++){
-      const oRow=oRows[r]||[],nRow=nRows[r]||[],maxC=Math.max(oRow.length,nRow.length,(om[r]||[]).length,(nm[r]||[]).length);
+      const oRow=oRows[r]||[],nRow=nRows[r]||[];
+      const maxC=Math.max(oRow.length,nRow.length);
       for(let c=0;c<maxC;c++){
-        const oc=(om[r]||[])[c]||{},nc=(nm[r]||[])[c]||{};
-        const ov=String(oRow[c]??'').trim(),nv=String(nRow[c]??'').trim(),of=String(oc.f||''),nf=String(nc.f||'');
-        if(ov===nv&&of===nf)continue;
-        const type=(!ov&&!of)?'added':(!nv&&!nf)?'deleted':'modified',cl=classify((of?'='+of+' → ':'')+ov,(nf?'='+nf+' → ':'')+nv);
-        const formulaChanged=of!==nf;
-        if(formulaChanged&&!cl.cats.includes('formula'))cl.cats.push('formula');
-        if(formulaChanged&&cl.sev==='low')cl.sev='medium';
-        changes.push({id:id++,type,oldText:of?'='+of+(ov?' ['+ov+']':''):ov,newText:nf?'='+nf+(nv?' ['+nv+']':''):nv,
-          oldIdx:r,newIdx:r,sheet,row:r,col:c,cellRef:colLetter(c)+(r+1),...cl,formulaChanged,rmText:of||ov,addText:nf||nv});
+        const ov=String(oRow[c]||'').trim(),nv=String(nRow[c]||'').trim();
+        if(ov===nv)continue;
+        const type=!ov?'added':!nv?'deleted':'modified';
+        const cl=classify(ov,nv);
+        changes.push({id:id++,type,oldText:ov,newText:nv,oldIdx:r,newIdx:r,
+          sheet,row:r,col:c,cellRef:colLetter(c)+(r+1),...cl,rmText:ov,addText:nv});
       }
     }
   });
@@ -828,7 +630,7 @@ function colLetter(n){let r='';n++;while(n>0){r=String.fromCharCode(65+(n-1)%26)
 
 // ── State ─────────────────────────────────────────────────────
 const S={oldFile:null,newFile:null,oldContent:null,newContent:null,
-  oldText:'',newText:'',changes:[],active:null,filtered:[],filter:'all',search:'',sensitivity:'balanced',syncScroll:true,isNavigating:false};
+  oldText:'',newText:'',changes:[],active:null,filtered:[],filter:'all',search:''};
 
 // ── Page switching ─────────────────────────────────────────────
 function showPage(p){
@@ -866,7 +668,6 @@ document.querySelectorAll('[data-grp="sens"]').forEach(el=>{
   el.addEventListener('click',()=>{
     document.querySelectorAll('[data-grp="sens"]').forEach(x=>x.classList.remove('on'));
     el.classList.add('on');
-    S.sensitivity=el.textContent.trim().toLowerCase();
   });
 });
 document.querySelectorAll('[data-grp="watch"]').forEach(el=>el.addEventListener('click',()=>el.classList.toggle('on')));
@@ -881,31 +682,35 @@ const STAGES=[
   [90,'Classifying','Scoring severity and tagging categories'],
   [100,'Complete','Comparison ready'],
 ];
-function setStage(i){
-  STAGES.forEach((st,idx)=>{const el=$('si-'+idx);if(!el)return;el.className='si'+(idx<i?' done':idx===i?' active':'');el.innerHTML=`<div class="si-dot"></div><span>${st[1]}</span>${idx<i?'<i class="ti ti-check si-check"></i>':''}`;});
-  const[pct,title,sub]=STAGES[i];$('prog-title').textContent=title;$('prog-sub').textContent=sub;$('prog-bar').style.width=pct+'%';$('prog-pct').textContent=pct+'%';
-}
 async function runCompare(){
   if(!S.oldFile||!S.newFile){$('err-msg').textContent='Upload both files first.';$('err-msg').classList.remove('hidden');return;}
-  try{validateFile(S.oldFile);validateFile(S.newFile);}catch(e){$('err-msg').textContent=e.message;$('err-msg').classList.remove('hidden');return;}
-  showPage('progress');$('prog-ico').innerHTML='<i class="ti ti-loader" style="font-size:36px;color:var(--blue)"></i>';$('prog-ico').classList.add('spin');
-  const sl=$('stage-list');sl.innerHTML='';STAGES.forEach(([,l],i)=>{const d=document.createElement('div');d.className='si';d.id='si-'+i;d.innerHTML=`<div class="si-dot"></div><span>${l}</span>`;sl.appendChild(d);});
+  showPage('progress');
+  const sl=$('stage-list');sl.innerHTML='';
+  STAGES.forEach(([,l],i)=>{const d=document.createElement('div');d.className='si';d.id='si-'+i;d.innerHTML=`<div class="si-dot"></div><span>${l}</span>`;sl.appendChild(d);});
+  for(let i=0;i<STAGES.length;i++){
+    const[pct,title,sub]=STAGES[i];
+    $('prog-title').textContent=title;$('prog-sub').textContent=sub;
+    $('prog-bar').style.width=pct+'%';$('prog-pct').textContent=pct+'%';
+    if(i>0){const p=$('si-'+(i-1));p.className='si done';p.innerHTML+=`<i class="ti ti-check si-check"></i>`;}
+    $('si-'+i).className='si active';
+    await new Promise(r=>setTimeout(r,300));
+  }
+  const last=$('si-'+(STAGES.length-1));last.className='si done';last.innerHTML+=`<i class="ti ti-check si-check"></i>`;
+  $('prog-ico').innerHTML='<i class="ti ti-check" style="font-size:36px;color:var(--green)"></i>';
+  $('prog-ico').classList.remove('spin');
   try{
-    setStage(0);await new Promise(r=>setTimeout(r,40));
-    setStage(1);const[oc,nc]=await Promise.all([extract(S.oldFile),extract(S.newFile)]);
-    S.oldContent=oc;S.newContent=nc;S.oldText=oc.text;S.newText=nc.text;
-    setStage(2);await new Promise(r=>setTimeout(r,20));
-    setStage(3);await new Promise(r=>setTimeout(r,20));
-    setStage(4);
-    const isXlsx=oc.type==='xlsx'&&nc.type==='xlsx';
-    const hasBlocks=Array.isArray(oc.blocks)&&Array.isArray(nc.blocks)&&!['pdf'].includes(oc.type)&&!['pdf'].includes(nc.type);
-    S.changes=isXlsx?diffXlsx(oc,nc):hasBlocks?diffBlocks(oc.blocks,nc.blocks):diffTexts(S.oldText,S.newText);
-    setStage(5);S.active=S.changes[0]||null;await new Promise(r=>setTimeout(r,30));
-    buildViewer();
-    setStage(6);$('prog-ico').innerHTML='<i class="ti ti-check" style="font-size:36px;color:var(--green)"></i>';$('prog-ico').classList.remove('spin');
-    await new Promise(r=>setTimeout(r,120));showPage('viewer');
+    const[oc,nc]=await Promise.all([extract(S.oldFile),extract(S.newFile)]);
+    S.oldContent=oc;S.newContent=nc;
+    S.oldText=oc.text;S.newText=nc.text;
+    // Use cell-level diff for xlsx, text diff otherwise
+    const isXlsx=oc.type==='xlsx'||nc.type==='xlsx';
+    S.changes=isXlsx?diffXlsx(oc,nc):diffTexts(S.oldText,S.newText);
+    S.active=S.changes[0]||null;
+    await new Promise(r=>setTimeout(r,300));
+    buildViewer();showPage('viewer');
   }catch(e){
-    console.error(e);showPage('upload');$('err-msg').textContent='Error: '+(e?.message||String(e));$('err-msg').classList.remove('hidden');
+    console.error(e);showPage('upload');
+    $('err-msg').textContent='Error: '+e.message;$('err-msg').classList.remove('hidden');
   }
 }
 
@@ -931,7 +736,7 @@ function buildViewer(){
   if(cnt.high)mr.innerHTML+=`<span class="mpill mp-hi">${cnt.high} high impact</span>`;
   // filters
   const fr=$('filter-row');fr.innerHTML='';
-  [['all','All'],['added','Added'],['deleted','Deleted'],['modified','Modified'],['moved','Moved'],['renumbered','Renumbered'],['numeric','Numeric'],['date','Dates'],['financial','Financial'],['legal','Legal'],['formula','Formula'],['high_impact','High impact']].forEach(([f,l])=>{
+  [['all','All'],['added','Added'],['deleted','Deleted'],['modified','Modified'],['numeric','Numeric'],['financial','Financial'],['high_impact','High impact']].forEach(([f,l])=>{
     const b=document.createElement('div');b.className='fc'+(f==='all'?' on':'');b.dataset.f=f;b.textContent=l;
     b.addEventListener('click',()=>{S.filter=f;fr.querySelectorAll('.fc').forEach(x=>x.classList.toggle('on',x.dataset.f===f));renderList();});
     fr.appendChild(b);
@@ -944,42 +749,75 @@ function buildViewer(){
 
 // ── Build panes ───────────────────────────────────────────────
 function buildPanes(){
-  const po=$('pane-old'),pn=$('pane-new');po.innerHTML='';pn.innerHTML='';
-  const os=splitSents(S.oldText),ns=splitSents(S.newText),byOld=new Map(),byNew=new Map();
+  const po=$('pane-old'),pn=$('pane-new');
+  po.innerHTML='';pn.innerHTML='';
+  const oc=S.oldContent,nc=S.newContent;
+  if(oc.type==='xlsx'||nc.type==='xlsx'){
+    renderXlsxPane(po,oc,'old');
+    renderXlsxPane(pn,nc,'new');
+    return;
+  }
+  const os=splitSents(S.oldText),ns=splitSents(S.newText);
+  const byOld=new Map(),byNew=new Map();
   S.changes.forEach(c=>{if(c.oldIdx>=0)byOld.set(c.oldIdx,c);if(c.newIdx>=0)byNew.set(c.newIdx,c);});
-  const renderSide=(container,content,sents,byIdx,side)=>{
-    if(content.type==='pdf')return renderPdfPane(container,content,byIdx,side);
-    if(content.type==='docx'||content.type==='html')return renderStructuredPane(container,content,side);
-    if(content.type==='pptx')return renderPptxPane(container,content,side);
-    if(content.type==='xlsx')return renderXlsxPane(container,content,side);
-    if(content.type==='csv')return renderCsvPane(container,content,side);
-    return renderTextPane(container,sents,byIdx,side);
-  };
-  renderSide(po,S.oldContent,os,byOld,'old');renderSide(pn,S.newContent,ns,byNew,'new');setupSyncScroll();
+  if(oc.type==='pdf'){renderPdfPane(po,oc,byOld,'old');}
+  else if(oc.type==='docx'){renderDocxPane(po,oc,os,byOld,'old');}
+  else if(oc.type==='html'){renderHtmlPane(po,oc,os,byOld,'old');}
+  else if(oc.type==='csv'){renderCsvPane(po,oc,'old');}
+  else{renderTextPane(po,os,byOld,'old');}
+  if(nc.type==='pdf'){renderPdfPane(pn,nc,byNew,'new');}
+  else if(nc.type==='docx'){renderDocxPane(pn,nc,ns,byNew,'new');}
+  else if(nc.type==='html'){renderHtmlPane(pn,nc,ns,byNew,'new');}
+  else if(nc.type==='csv'){renderCsvPane(pn,nc,'new');}
+  else{renderTextPane(pn,ns,byNew,'new');}
 }
 
-function renderStructuredPane(container,content,side){
-  const wrap=document.createElement('div');wrap.className='doc-render';wrap.innerHTML=content.html||'';sanitizeDom(wrap);container.appendChild(wrap);
-  const idxKey=side==='old'?'oldBlockIdx':'newBlockIdx';
-  S.changes.forEach(ch=>{
-    const idx=ch[idxKey];if(idx===undefined||idx<0)return;
-    const el=wrap.querySelector(`[data-diffiq-block="${idx}"]`);if(!el)return;
-    el.classList.add('hl-'+ch.type);el.dataset.id=ch.id;el.title=`${ch.type}${ch.section?' · '+ch.section:''}`;
-    if(ch.type==='modified'&&ch.oldText&&ch.newText)el.innerHTML=inlineDiff(ch.oldText,ch.newText,side);
-    el.addEventListener('click',()=>setActive(ch.id));
+// ── DOCX renderer ─────────────────────────────────────────────
+function renderDocxPane(container,content,sents,byIdx,side){
+  const wrap=document.createElement('div');wrap.className='doc-render';
+  wrap.innerHTML=content.html;
+  container.appendChild(wrap);
+  // match sentences to elements and highlight
+  const els=[...wrap.querySelectorAll('p,li,td,th,h1,h2,h3,h4,h5,h6')];
+  sents.forEach((sent,idx)=>{
+    const ch=byIdx.get(idx);if(!ch)return;
+    const sentLow=sent.trim().toLowerCase().slice(0,60);
+    for(const el of els){
+      if(el.dataset.highlighted)continue;
+      const etxt=(el.innerText||el.textContent||'').trim().toLowerCase();
+      if(etxt.includes(sentLow)||sentLow.includes(etxt.slice(0,50))){
+        el.classList.add('hl-'+ch.type);el.dataset.id=ch.id;el.dataset.highlighted='1';
+        if(ch.type==='modified')el.innerHTML=inlineDiff(ch.oldText,ch.newText,side);
+        el.addEventListener('click',()=>setActive(ch.id));
+        break;
+      }
+    }
   });
 }
 
-function renderPptxPane(container,content,side){
+// ── HTML renderer ─────────────────────────────────────────────
+function renderHtmlPane(container,content,sents,byIdx,side){
   const wrap=document.createElement('div');wrap.className='doc-render';
-  const idxKey=side==='old'?'oldBlockIdx':'newBlockIdx';
-  (content.slides||[]).forEach((sl,i)=>{
-    const box=document.createElement('section');box.dataset.diffiqBlock=i;box.style.cssText='border:1px solid #ddd;border-radius:8px;padding:18px;margin:0 0 16px;background:#fff';
-    const h=document.createElement('h2');h.textContent='Slide '+sl.slide;box.appendChild(h);
-    const p=document.createElement('p');p.textContent=sl.text||'(No extractable text)';box.appendChild(p);
-    const ch=S.changes.find(c=>c[idxKey]===i);if(ch){box.classList.add('hl-'+ch.type);box.dataset.id=ch.id;if(ch.type==='modified')p.innerHTML=inlineDiff(ch.oldText,ch.newText,side);box.addEventListener('click',()=>setActive(ch.id));}
-    wrap.appendChild(box);
-  });container.appendChild(wrap);
+  const clean=content.html
+    .replace(/<script[\s\S]*?<\/script>/gi,'')
+    .replace(/<style[\s\S]*?<\/style>/gi,'')
+    .replace(/<head[\s\S]*?<\/head>/gi,'')
+    .replace(/<html[^>]*>|<\/html>|<body[^>]*>|<\/body>/gi,'');
+  wrap.innerHTML=clean;
+  container.appendChild(wrap);
+  const els=[...wrap.querySelectorAll('p,li,td,th,h1,h2,h3,h4,h5,h6,div,span')].filter(e=>e.childElementCount===0&&(e.innerText||'').trim());
+  sents.forEach((sent,idx)=>{
+    const ch=byIdx.get(idx);if(!ch)return;
+    const sentLow=sent.trim().toLowerCase().slice(0,60);
+    for(const el of els){
+      if(el.dataset.highlighted)continue;
+      const etxt=(el.innerText||el.textContent||'').trim().toLowerCase();
+      if(etxt.includes(sentLow)||sentLow.includes(etxt.slice(0,50))){
+        el.classList.add('hl-'+ch.type);el.dataset.id=ch.id;el.dataset.highlighted='1';
+        el.addEventListener('click',()=>setActive(ch.id));break;
+      }
+    }
+  });
 }
 
 // ── Text renderer ─────────────────────────────────────────────
@@ -1003,18 +841,19 @@ function renderTextPane(container,sents,byIdx,side){
 function renderCsvPane(container,content,side){
   const wrap=document.createElement('div');wrap.className='xlsx-render';
   if(!content.rows||!content.rows.length){wrap.textContent='Empty file';container.appendChild(wrap);return;}
-  const tw=document.createElement('div');tw.className='xlsx-table-wrap',t=document.createElement('table');t.className='xlsx-table';
-  const tbody=document.createElement('tbody'),idxKey=side==='old'?'oldBlockIdx':'newBlockIdx',blockAt=new Map();
-  (content.blocks||[]).forEach(b=>blockAt.set(b.row+'|'+b.col,b.index));
+  const tw=document.createElement('div');tw.className='xlsx-table-wrap';
+  const t=document.createElement('table');t.className='xlsx-table';
+  const thead=document.createElement('thead'),tbody=document.createElement('tbody');
   content.rows.forEach((row,ri)=>{
-    const tr=document.createElement('tr');row.forEach((cell,ci)=>{
-      const td=document.createElement(ri===0?'th':'td');td.textContent=cell;
-      const bi=blockAt.get(ri+'|'+ci),ch=S.changes.find(c=>c[idxKey]===bi);
-      if(ch){td.classList.add('cell-'+ch.type);td.dataset.id=ch.id;td.dataset.diffiqBlock=bi;td.style.cursor='pointer';if(ch.type==='modified')td.innerHTML=inlineDiff(ch.oldText,ch.newText,side);td.addEventListener('click',()=>setActive(ch.id));}
-      tr.appendChild(td);
-    });tbody.appendChild(tr);
+    const tr=document.createElement('tr');
+    row.forEach(cell=>{
+      const td=document.createElement(ri===0?'th':'td');
+      td.textContent=cell;tr.appendChild(td);
+    });
+    if(ri===0)thead.appendChild(tr);else tbody.appendChild(tr);
   });
-  t.appendChild(tbody);tw.appendChild(t);wrap.appendChild(tw);container.appendChild(wrap);
+  t.appendChild(thead);t.appendChild(tbody);tw.appendChild(t);wrap.appendChild(tw);
+  container.appendChild(wrap);
 }
 
 // ── XLSX renderer ─────────────────────────────────────────────
@@ -1032,7 +871,7 @@ function renderXlsxPane(container,content,side){
   const paneData=document.createElement('div');
   content.sheetNames.forEach((name,si)=>{
     const tab=document.createElement('div');tab.className='sheet-tab'+(si===0?' on':'');
-    tab.textContent=name;tab.dataset.sheet=name;
+    tab.textContent=name;
     tab.addEventListener('click',()=>{
       tabRow.querySelectorAll('.sheet-tab').forEach(t=>t.classList.remove('on'));
       tab.classList.add('on');
@@ -1067,7 +906,7 @@ function renderSheet(container,rows,sheetName,chMap,side){
       if(ch){
         td.classList.add('cell-'+ch.type);
         td.title=ch.type+': '+(ch.oldText||'(empty)')+' → '+(ch.newText||'(empty)');
-        td.style.cursor='pointer';td.dataset.id=ch.id;td.dataset.sheet=sheetName;td.dataset.row=ri;td.dataset.col=c;
+        td.style.cursor='pointer';
         td.addEventListener('click',()=>setActive(ch.id));
       }
       tr.appendChild(td);
@@ -1083,88 +922,166 @@ async function renderPdfPane(container,content,byIdx,side){
   if(!content.pdfDoc){container.innerHTML='<div class="loading-pane">PDF not available</div>';return;}
   const wrap=document.createElement('div');wrap.className='pdf-wrap';
   container.innerHTML='';container.appendChild(wrap);
-  const scale=1.5;
-  // Build a sentence→page+item lookup from pageTexts
-  const sentMap=buildPdfSentMap(content,byIdx);
+  const SCALE=1.6;
+
   for(let p=1;p<=content.pageCount;p++){
     try{
       const page=await content.pdfDoc.getPage(p);
-      const vp=page.getViewport({scale});
+      const vp=page.getViewport({scale:SCALE});
       const pageWrap=document.createElement('div');pageWrap.className='pdf-page-wrap';
-      pageWrap.style.width=vp.width+'px';pageWrap.style.height=vp.height+'px';
-      // canvas
+      pageWrap.style.cssText=`position:relative;display:inline-block;width:${vp.width}px;height:${vp.height}px;margin-bottom:2px`;
+
+      // Render page to canvas
       const canvas=document.createElement('canvas');
-      canvas.width=vp.width;canvas.height=vp.height;
+      canvas.width=vp.width;canvas.height=vp.height;canvas.style.display='block';
       await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
       pageWrap.appendChild(canvas);
-      // highlight overlay
+
+      // Highlight overlay canvas (drawn on top, pointer-events none)
       const hlCanvas=document.createElement('canvas');
       hlCanvas.width=vp.width;hlCanvas.height=vp.height;
-      hlCanvas.className='pdf-hl-overlay';
-      hlCanvas.style.width=vp.width+'px';hlCanvas.style.height=vp.height+'px';
-      hlCanvas.style.position='absolute';hlCanvas.style.top='0';hlCanvas.style.left='0';
-      hlCanvas.style.pointerEvents='none';
+      hlCanvas.style.cssText=`position:absolute;top:0;left:0;pointer-events:none;`;
       pageWrap.appendChild(hlCanvas);
-      // draw highlights for changes on this page
-      const ctx=hlCanvas.getContext('2d');
+
+      // Get text content with positions
       const tc=await page.getTextContent();
-      await drawPdfHighlights(ctx,tc,vp,page,sentMap,p,content,byIdx,pageWrap);
+      const items=tc.items.filter(i=>i.str&&i.str.trim());
+
+      // Draw highlights for this page
+      highlightPdfPage(hlCanvas,pageWrap,items,vp,p,content,byIdx);
+
       wrap.appendChild(pageWrap);
     }catch(e){console.warn('PDF page error',p,e);}
   }
 }
 
-function buildPdfSentMap(content,byIdx){
-  // Map: sentIdx → change
-  const map=new Map();
-  byIdx.forEach((ch,idx)=>map.set(idx,ch));
-  return map;
-}
-
-async function drawPdfHighlights(ctx,tc,vp,page,sentMap,pageNum,content,byIdx,pageWrap){
-  // Get all text items with transforms
-  const items=tc.items;
-  if(!items.length)return;
-  // Build full page text and find which sentences appear on this page
+function highlightPdfPage(hlCanvas,pageWrap,items,vp,pageNum,content,byIdx){
+  const ctx=hlCanvas.getContext('2d');
   const pageText=content.pageTexts[pageNum-1]||'';
-  const hlColors={'added':'rgba(34,197,94,.35)','deleted':'rgba(239,68,68,.35)','modified':'rgba(245,158,11,.35)','moved':'rgba(167,139,250,.35)'};
-  // For each change, check if the sentence text appears on this page
+  const pageItems=content.pageData?content.pageData[pageNum-1]:items;
+
+  const HL={
+    added:'rgba(34,197,94,0.32)',
+    deleted:'rgba(239,68,68,0.32)',
+    modified:'rgba(245,158,11,0.32)',
+    moved:'rgba(167,139,250,0.32)'
+  };
+  const BORDER={
+    added:'rgba(34,197,94,0.85)',
+    deleted:'rgba(239,68,68,0.85)',
+    modified:'rgba(245,158,11,0.85)',
+    moved:'rgba(167,139,250,0.85)'
+  };
+
+  // Build concatenated token list from items: [{text, x1, y1, x2, y2}]
+  // PDF transform: [a,b,c,d,e,f] where e=x, f=y (bottom-left in PDF space)
+  // PDF y is from bottom; canvas y is from top: canvasY = vp.height - (f * scale)
+  const tokens=[];
+  for(const item of pageItems){
+    if(!item.str.trim())continue;
+    const tx=item.transform;
+    const sx=tx[0],sy=tx[3]; // scale x, scale y in transform
+    const px=tx[4],py=tx[5]; // position in PDF user space
+    // Convert PDF point to canvas pixel using viewport
+    const pt=vp.convertToViewportPoint(px,py);
+    const ptEnd=vp.convertToViewportPoint(px+item.width,py+item.height);
+    const x1=Math.min(pt[0],ptEnd[0]);
+    const y1=Math.min(pt[1],ptEnd[1]);
+    const x2=Math.max(pt[0],ptEnd[0]);
+    const y2=Math.max(pt[1],ptEnd[1]);
+    // height fallback: use font size from transform scale
+    const fh=Math.abs(sy)*vp.scale||12;
+    tokens.push({
+      str:item.str,
+      x1,y1:y1-fh*0.15,
+      x2,y2:y1+fh*1.1,
+    });
+  }
+
+  // For each change sentence, find the best contiguous span of tokens
   byIdx.forEach((ch,idx)=>{
     const sentText=(ch.oldText||ch.newText||'').trim();
-    if(!sentText||sentText.length<5)return;
-    const snippet=sentText.slice(0,40).toLowerCase();
-    if(!pageText.toLowerCase().includes(snippet))return;
-    // Find bounding box of the matching text items
-    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-    let found=false;
-    const words=snippet.split(/\s+/).filter(w=>w.length>3);
-    for(let i=0;i<items.length;i++){
-      const item=items[i];
-      const itxt=(item.str||'').toLowerCase();
-      if(words.some(w=>itxt.includes(w))){
-        const tx=item.transform;
-        const x=tx[4]*vp.scale,y=vp.height-tx[5]*vp.scale;
-        const w=item.width*vp.scale,h=Math.abs(item.height||12)*vp.scale||14;
-        if(x<minX)minX=x;if(y-h<minY)minY=y-h;
-        if(x+w>maxX)maxX=x+w;if(y>maxY)maxY=y;
-        found=true;
+    if(!sentText||sentText.length<4)return;
+
+    // Check this sentence appears on this page at all
+    const sentLow=sentText.toLowerCase();
+    const pageLow=pageText.toLowerCase();
+    // Use first 30 meaningful chars as anchor
+    const anchor=sentLow.replace(/\s+/g,' ').slice(0,30);
+    if(!pageLow.includes(anchor.slice(0,20)))return;
+
+    // Tokenise the sentence to words
+    const sentWords=sentText.replace(/[^a-zA-Z0-9ऀ-ॿ\s]/g,' ')
+      .split(/\s+/).filter(w=>w.length>=2).map(w=>w.toLowerCase());
+    if(!sentWords.length)return;
+
+    // Sliding window: find the span of tokens that best covers the sentence words
+    let bestScore=0,bestSpan=null;
+    for(let start=0;start<tokens.length;start++){
+      let matched=0;
+      let wi=0;
+      let end=start;
+      // Walk forward through tokens trying to match sentence words in order
+      for(let t=start;t<Math.min(tokens.length,start+sentWords.length*3+10);t++){
+        const twords=tokens[t].str.toLowerCase().replace(/[^a-zA-Z0-9ऀ-ॿ]/g,' ').split(/\s+/).filter(Boolean);
+        for(const tw of twords){
+          if(wi<sentWords.length&&(tw===sentWords[wi]||tw.startsWith(sentWords[wi].slice(0,4)))){
+            matched++;wi++;
+          }
+        }
+        if(matched>0)end=t;
+        if(wi>=sentWords.length)break;
+      }
+      const score=matched/sentWords.length;
+      if(score>bestScore&&score>0.35){
+        bestScore=score;
+        bestSpan={start,end};
+      }
+      if(bestScore>0.85)break; // good enough, stop searching
+    }
+
+    if(!bestSpan)return;
+
+    // Compute bounding box of the matched span
+    // Group by line (similar y1 within 4px) for multi-line highlights
+    const spanTokens=tokens.slice(bestSpan.start,bestSpan.end+1);
+    if(!spanTokens.length)return;
+
+    // Group into lines
+    const lines=[];
+    let curLine=null;
+    for(const tok of spanTokens){
+      if(!curLine||Math.abs(tok.y1-curLine.y1)>6){
+        curLine={y1:tok.y1,y2:tok.y2,x1:tok.x1,x2:tok.x2};
+        lines.push(curLine);
+      }else{
+        curLine.x1=Math.min(curLine.x1,tok.x1);
+        curLine.x2=Math.max(curLine.x2,tok.x2);
+        curLine.y2=Math.max(curLine.y2,tok.y2);
       }
     }
-    if(found&&maxX>minX){
-      const color=hlColors[ch.type]||'rgba(245,158,11,.35)';
-      ctx.fillStyle=color;
-      ctx.fillRect(minX-2,minY-2,maxX-minX+4,maxY-minY+4);
-      ctx.strokeStyle=color.replace('.35','.8');
-      ctx.lineWidth=1.5;
-      ctx.strokeRect(minX-2,minY-2,maxX-minX+4,maxY-minY+4);
-      // make it clickable
-      const div=document.createElement('div');
-      div.style.cssText=`position:absolute;left:${minX-2}px;top:${minY-2}px;width:${maxX-minX+4}px;height:${maxY-minY+4}px;cursor:pointer;z-index:10`;
-      div.title=ch.type+': '+sentText.slice(0,80);
-      div.dataset.id=ch.id;
-      div.addEventListener('click',()=>setActive(ch.id));
-      pageWrap.appendChild(div);
+
+    // Draw each line highlight
+    ctx.fillStyle=HL[ch.type]||HL.modified;
+    ctx.strokeStyle=BORDER[ch.type]||BORDER.modified;
+    ctx.lineWidth=1;
+    for(const line of lines){
+      const pad=2;
+      ctx.fillRect(line.x1-pad,line.y1-pad,line.x2-line.x1+pad*2,line.y2-line.y1+pad*2);
+      ctx.strokeRect(line.x1-pad,line.y1-pad,line.x2-line.x1+pad*2,line.y2-line.y1+pad*2);
     }
+
+    // Clickable overlay div for the whole bounding box
+    const allX1=Math.min(...lines.map(l=>l.x1));
+    const allY1=Math.min(...lines.map(l=>l.y1));
+    const allX2=Math.max(...lines.map(l=>l.x2));
+    const allY2=Math.max(...lines.map(l=>l.y2));
+    const div=document.createElement('div');
+    div.style.cssText=`position:absolute;left:${allX1-2}px;top:${allY1-2}px;width:${allX2-allX1+4}px;height:${allY2-allY1+4}px;cursor:pointer;z-index:10;`;
+    div.title=ch.type.toUpperCase()+': '+sentText.slice(0,100);
+    div.dataset.id=ch.id;
+    div.addEventListener('click',()=>setActive(ch.id));
+    pageWrap.appendChild(div);
   });
 }
 
@@ -1179,7 +1096,7 @@ function renderList(){
   });
   const cl=$('change-list');cl.innerHTML='';
   if(!S.filtered.length){cl.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">No changes match</div>';return;}
-  const cbM={added:'cb-add',deleted:'cb-del',modified:'cb-mod',moved:'cb-mov',renumbered:'cb-ren'};
+  const cbM={added:'cb-add',deleted:'cb-del',modified:'cb-mod',moved:'cb-mov'};
   const csM={low:'cs-low',medium:'cs-med',high:'cs-high',critical:'cs-crit'};
   S.filtered.forEach(c=>{
     const d=document.createElement('div');
@@ -1189,7 +1106,6 @@ function renderList(){
     if(c.cats?.includes('numeric'))pills+=`<span class="cpill" style="background:var(--blue-bg);color:var(--blue)">num</span>`;
     if(c.cats?.includes('date'))pills+=`<span class="cpill" style="background:var(--purple-bg);color:var(--purple)">date</span>`;
     if(c.sheet)pills+=`<span class="cpill" style="background:var(--card);color:var(--text2)">${c.sheet}!${c.cellRef||''}</span>`;
-    if(c.section)pills+=`<span class="cpill" style="background:var(--card);color:var(--text2)">${esc(c.section.slice(0,32))}</span>`;
     const preview=esc((c.oldText||c.newText).slice(0,120));
     d.innerHTML=`<div class="ci-head"><span class="cnum">#${c.id}</span><span class="cbadge ${cbM[c.type]||'cb-mod'}">${c.type}</span><span class="csev ${csM[c.sev]||'cs-low'}">${c.sev}</span></div><div class="ci-text">${preview}</div>${pills?`<div class="ci-pills">${pills}</div>`:''}`;
     d.addEventListener('click',()=>setActive(c.id));
@@ -1198,72 +1114,27 @@ function renderList(){
 }
 
 // ── Set active change ─────────────────────────────────────────
-function activateXlsxSheet(side,sheet){
-  if(!sheet)return;
-  const pane=$('pane-'+side),tab=[...pane.querySelectorAll('.sheet-tab')].find(t=>t.dataset.sheet===sheet);
-  if(tab&&!tab.classList.contains('on'))tab.click();
-}
-function focusElementInPane(side,id,ch,behavior='auto'){
-  const pane=$('pane-'+side);if(!pane)return false;
-  pane.querySelectorAll('.focus-ring').forEach(el=>el.classList.remove('focus-ring'));
-  if(ch?.sheet)activateXlsxSheet(side,ch.sheet);
-  let el=pane.querySelector(`[data-id="${id}"]`);
-  const blockKey=side==='old'?'oldBlockIdx':'newBlockIdx';
-  if(!el&&ch&&ch[blockKey]>=0)el=pane.querySelector(`[data-diffiq-block="${ch[blockKey]}"]`);
-  if(!el&&ch?.sheet)el=pane.querySelector(`[data-sheet="${CSS.escape(ch.sheet)}"][data-row="${ch.row}"][data-col="${ch.col}"]`);
-  if(!el)return false;
-  el.classList.add('focus-ring');
-  // offsetTop is unreliable for nested table cells because their offset parent
-  // may be a row/table. Calculate the target from live rectangles instead.
-  const pr=pane.getBoundingClientRect(),er=el.getBoundingClientRect();
-  const target=Math.max(0,pane.scrollTop+(er.top-pr.top)-(pane.clientHeight/2)+(er.height/2));
-  pane.scrollTo({top:target,behavior});
-  return true;
-}
-function nearestCounterpartBlock(side,ch){
-  const key=side==='old'?'oldBlockIdx':'newBlockIdx';
-  if(ch[key]>=0)return ch[key];
-  const other=side==='old'?'newBlockIdx':'oldBlockIdx',pos=ch[other];
-  let best=null,bestDist=Infinity;
-  for(const c of S.changes){
-    if(c[key]<0||c[other]<0)continue;
-    const d=Math.abs(c[other]-pos);if(d<bestDist){bestDist=d;best=c[key];}
-  }
-  return best;
-}
 function setActive(id){
-  const ch=S.changes.find(c=>c.id===id);if(!ch)return;S.active=ch;
+  const ch=S.changes.find(c=>c.id===id);if(!ch)return;
+  S.active=ch;
   document.querySelectorAll('.ci').forEach(el=>el.classList.toggle('active',el.dataset.id==id));
-  // Suspend proportional sync while jumping. Smooth scrolling in both panes used
-  // to trigger competing scroll events and could pull the user away from the change.
-  S.isNavigating=true;
-  let oldFound=focusElementInPane('old',id,ch,'auto');
-  let newFound=focusElementInPane('new',id,ch,'auto');
-  if(!oldFound){const bi=nearestCounterpartBlock('old',ch);if(bi!==null)focusElementInPane('old',-999,{oldBlockIdx:bi},'auto');}
-  if(!newFound){const bi=nearestCounterpartBlock('new',ch);if(bi!==null)focusElementInPane('new',-999,{newBlockIdx:bi},'auto');}
-  const listItem=$('change-list')?.querySelector(`.ci[data-id="${id}"]`);if(listItem)listItem.scrollIntoView({block:'nearest'});
+  // scroll to in text/docx panes
+  ['old','new'].forEach(side=>{
+    const pane=$('pane-'+side);
+    pane.querySelectorAll('[data-id]').forEach(el=>el.classList.remove('focus-ring'));
+    const el=pane.querySelector(`[data-id="${id}"]`);
+    if(el){el.classList.add('focus-ring');el.scrollIntoView({behavior:'smooth',block:'center'});}
+  });
   renderDetail(ch);
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{S.isNavigating=false;}));
-}
-let syncCleanup=null;
-function setupSyncScroll(){
-  if(syncCleanup)syncCleanup();
-  const a=$('pane-old'),b=$('pane-new');if(!a||!b)return;
-  let lock=false;
-  const sync=(src,dst)=>()=>{
-    if(!S.syncScroll||S.isNavigating||lock)return;lock=true;
-    const maxS=Math.max(1,src.scrollHeight-src.clientHeight),maxD=Math.max(0,dst.scrollHeight-dst.clientHeight);
-    dst.scrollTop=(src.scrollTop/maxS)*maxD;requestAnimationFrame(()=>lock=false);
-  };
-  const fa=sync(a,b),fb=sync(b,a);a.addEventListener('scroll',fa,{passive:true});b.addEventListener('scroll',fb,{passive:true});
-  syncCleanup=()=>{a.removeEventListener('scroll',fa);b.removeEventListener('scroll',fb);};
+  // update list
+  document.querySelectorAll('.ci').forEach(el=>el.classList.toggle('active',el.dataset.id==id));
 }
 
 // ── Detail panel ──────────────────────────────────────────────
 function renderDetail(ch){
   const dp=$('detail');
   if(!ch){dp.innerHTML='<div class="detail-empty"><i class="ti ti-hand-click" style="font-size:15px"></i> Select a change to see details</div>';return;}
-  const cbM={added:'cb-add',deleted:'cb-del',modified:'cb-mod',moved:'cb-mov',renumbered:'cb-ren'};
+  const cbM={added:'cb-add',deleted:'cb-del',modified:'cb-mod',moved:'cb-mov'};
   const csM={low:'cs-low',medium:'cs-med',high:'cs-high',critical:'cs-crit'};
   let catPills=(ch.cats||[]).map(c=>`<span class="cpill" style="background:var(--card);color:var(--text2);font-size:10px">${c}</span>`).join('');
   if(ch.sheet)catPills+=`<span class="cpill" style="background:var(--card);color:var(--text2);font-size:10px">${ch.sheet}!${ch.cellRef||''}</span>`;
@@ -1272,7 +1143,7 @@ function renderDetail(ch){
   let chips='';
   if(ch.rmText)chips+=`<span class="dchip dch-rm">− ${esc(ch.rmText.slice(0,80))}${ch.rmText.length>80?'…':''}</span>`;
   if(ch.addText)chips+=`<span class="dchip dch-add">+ ${esc(ch.addText.slice(0,80))}${ch.addText.length>80?'…':''}</span>`;
-  dp.innerHTML=`<div class="detail-inner"><div class="di-meta"><span class="di-id">Change #${ch.id}</span><span class="cbadge ${cbM[ch.type]||'cb-mod'}">${ch.type}</span><span class="csev ${csM[ch.sev]||'cs-low'}">${ch.sev}</span>${catPills}${ch.confidence!==undefined?`<span class="di-sim">${ch.confidence}% detection confidence${ch.sim!==undefined?' · '+ch.sim+'% text similarity':''}</span>`:(ch.sim!==undefined?`<span class="di-sim">${ch.sim}% similar</span>`:'')}</div><div class="di-cols">${oldBox}${newBox}</div>${chips?`<div class="di-chips">${chips}</div>`:''}</div>`;
+  dp.innerHTML=`<div class="detail-inner"><div class="di-meta"><span class="di-id">Change #${ch.id}</span><span class="cbadge ${cbM[ch.type]||'cb-mod'}">${ch.type}</span><span class="csev ${csM[ch.sev]||'cs-low'}">${ch.sev}</span>${catPills}${ch.sim!==undefined?`<span class="di-sim">${ch.sim}% similar</span>`:''}</div><div class="di-cols">${oldBox}${newBox}</div>${chips?`<div class="di-chips">${chips}</div>`:''}</div>`;
 }
 
 // ── Wire buttons ──────────────────────────────────────────────
@@ -1281,14 +1152,11 @@ $('btn-back').addEventListener('click',()=>showPage('upload'));
 $('btn-new').addEventListener('click',()=>showPage('upload'));
 $('btn-prev').addEventListener('click',()=>{const i=S.filtered.findIndex(c=>c.id===S.active?.id);if(i>0)setActive(S.filtered[i-1].id);});
 $('btn-next').addEventListener('click',()=>{const i=S.filtered.findIndex(c=>c.id===S.active?.id);if(i<S.filtered.length-1)setActive(S.filtered[i+1].id);});
-$('btn-sync').addEventListener('click',()=>{S.syncScroll=!S.syncScroll;$('btn-sync').setAttribute('aria-pressed',String(S.syncScroll));$('btn-sync').classList.toggle('btn-primary',S.syncScroll);});
-$('btn-sync').classList.add('btn-primary');
 $('btn-export').addEventListener('click',()=>{
   if(!S.changes.length)return;
-  const rows=[['#','Type','Business Impact','Detection Confidence','Text Similarity','Section','Sheet','Cell','Categories','Old text','New text','Removed','Added']];
-  S.changes.forEach(c=>rows.push([c.id,c.type,c.sev,c.confidence??'',c.sim??'',c.section||'',c.sheet||'',c.cellRef||'',(c.cats||[]).join(';'),c.oldText,c.newText,c.rmText,c.addText]));
-  const safeCsv=v=>{let x=String(v??'');if(/^[=+@]/.test(x)||(/^-/).test(x)&&!/^-[0-9.]+$/.test(x))x="'"+x;return '"'+x.replace(/"/g,'""')+'"';};
-  const csv=rows.map(r=>r.map(safeCsv).join(',')).join('\n');
+  const rows=[['#','Type','Severity','Sheet','Cell','Categories','Old text','New text','Removed','Added']];
+  S.changes.forEach(c=>rows.push([c.id,c.type,c.sev,c.sheet||'',c.cellRef||'',(c.cats||[]).join(';'),c.oldText,c.newText,c.rmText,c.addText]));
+  const csv=rows.map(r=>r.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='diffiq-changes.csv';a.click();
 });
 document.addEventListener('keydown',e=>{
@@ -1296,46 +1164,12 @@ document.addEventListener('keydown',e=>{
   if(e.key==='ArrowUp'&&S.active)$('btn-prev').click();
 });
 
-// ── PWA install + Service Worker ──────────────────────────────
-let deferredInstallPrompt=null;
-const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
-const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
-function showPwaHelp(title,text){
-  $('pwa-toast-title').textContent=title;$('pwa-toast-text').textContent=text;$('pwa-toast').classList.remove('hidden');
-}
-$('pwa-toast-close').addEventListener('click',()=>$('pwa-toast').classList.add('hidden'));
-window.addEventListener('beforeinstallprompt',e=>{
-  e.preventDefault();deferredInstallPrompt=e;
-  $('btn-install').classList.add('install-ready');$('btn-install').title='Install DiffIQ on this device';
-});
-window.addEventListener('appinstalled',()=>{
-  deferredInstallPrompt=null;$('btn-install').classList.remove('install-ready');
-  showPwaHelp('DiffIQ installed','The app was installed successfully and can now be launched from your apps.');
-});
-$('btn-install').addEventListener('click',async()=>{
-  if(isStandalone){showPwaHelp('Already installed','DiffIQ is already running as an installed app.');return;}
-  if(deferredInstallPrompt){
-    deferredInstallPrompt.prompt();
-    try{await deferredInstallPrompt.userChoice;}catch(_){ }
-    deferredInstallPrompt=null;$('btn-install').classList.remove('install-ready');return;
-  }
-  if(location.protocol!=='https:'&&location.hostname!=='localhost'&&location.hostname!=='127.0.0.1'){
-    showPwaHelp('HTTPS required','Installable PWAs must be served over HTTPS (or localhost). Deploy this folder to Vercel/Netlify or run it on localhost; opening index.html directly will not show an install prompt.');return;
-  }
-  if(isIOS){showPwaHelp('Install on iPhone/iPad','Open this page in Safari, tap Share, then choose “Add to Home Screen”. iOS does not expose the normal browser install prompt.');return;}
-  showPwaHelp('Install from browser','The browser has not offered its install prompt yet. Reload once after the service worker finishes installing, then use the browser menu → “Install DiffIQ” / “Install app”. If it is already installed, the prompt will not appear again.');
-});
-
+// ── Service Worker ────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  window.addEventListener('load',async()=>{
-    try{
-      const r=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
-      console.log('[DiffIQ] SW registered',r.scope);
-      if(!navigator.serviceWorker.controller){console.log('[DiffIQ] First SW install complete; reload may be needed for installability.');}
-    }catch(e){
-      console.warn('[DiffIQ] SW failed',e);
-      showPwaHelp('Offline app unavailable','The service worker could not register. Make sure the app is served over HTTPS or localhost and sw.js is in the same folder as index.html.');
-    }
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js')
+      .then(r=>console.log('[DiffIQ] SW registered'))
+      .catch(e=>console.warn('[DiffIQ] SW failed',e));
   });
 }
 </script>
