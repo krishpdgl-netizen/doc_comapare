@@ -961,16 +961,16 @@ function highlightPdfPage(hlCanvas,pageWrap,items,vp,pageNum,content,byIdx){
   const pageItems=content.pageData?content.pageData[pageNum-1]:items;
 
   const HL={
-    added:'rgba(34,197,94,0.32)',
-    deleted:'rgba(239,68,68,0.32)',
-    modified:'rgba(245,158,11,0.32)',
-    moved:'rgba(167,139,250,0.32)'
+    added:'rgba(34,197,94,0.12)',
+    deleted:'rgba(239,68,68,0.12)',
+    modified:'rgba(245,158,11,0.12)',
+    moved:'rgba(167,139,250,0.12)'
   };
   const BORDER={
-    added:'rgba(34,197,94,0.85)',
-    deleted:'rgba(239,68,68,0.85)',
-    modified:'rgba(245,158,11,0.85)',
-    moved:'rgba(167,139,250,0.85)'
+    added:'rgba(34,197,94,0.7)',
+    deleted:'rgba(239,68,68,0.7)',
+    modified:'rgba(245,158,11,0.7)',
+    moved:'rgba(167,139,250,0.7)'
   };
 
   // Build concatenated token list from items: [{text, x1, y1, x2, y2}]
@@ -1061,14 +1061,22 @@ function highlightPdfPage(hlCanvas,pageWrap,items,vp,pageNum,content,byIdx){
       }
     }
 
-    // Draw each line highlight
-    ctx.fillStyle=HL[ch.type]||HL.modified;
-    ctx.strokeStyle=BORDER[ch.type]||BORDER.modified;
-    ctx.lineWidth=1;
+    // Draw each line: very light fill + solid left border + underline
+    const fillColor=HL[ch.type]||HL.modified;
+    const borderColor=BORDER[ch.type]||BORDER.modified;
     for(const line of lines){
-      const pad=2;
-      ctx.fillRect(line.x1-pad,line.y1-pad,line.x2-line.x1+pad*2,line.y2-line.y1+pad*2);
-      ctx.strokeRect(line.x1-pad,line.y1-pad,line.x2-line.x1+pad*2,line.y2-line.y1+pad*2);
+      const pad=1;
+      const lx=line.x1-pad, ly=line.y1-pad;
+      const lw=line.x2-line.x1+pad*2, lh=line.y2-line.y1+pad*2;
+      // very subtle background tint
+      ctx.fillStyle=fillColor;
+      ctx.fillRect(lx,ly,lw,lh);
+      // left accent bar
+      ctx.fillStyle=borderColor;
+      ctx.fillRect(lx,ly,2.5,lh);
+      // underline
+      ctx.fillStyle=borderColor;
+      ctx.fillRect(lx,ly+lh-1.5,lw,1.5);
     }
 
     // Clickable overlay div for the whole bounding box
