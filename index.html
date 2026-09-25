@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -252,6 +253,10 @@ mark.ad{background:rgba(34,197,94,.22);color:#15803d;border-radius:2px;padding:0
 .dch-add{background:var(--green-dim);color:#86efac}
 
 .loading-pane{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text2);font-size:12px;gap:8px}
+.ocr-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.3);margin-left:6px;vertical-align:middle}
+.prog-detail{font-size:11px;color:var(--text3);text-align:center;margin-top:4px;min-height:16px}
+.prog-page-track{height:2px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:6px}
+.prog-page-fill{height:100%;background:var(--purple);transition:width .2s ease;border-radius:2px}
 </style>
 </head>
 <body>
@@ -347,6 +352,8 @@ mark.ad{background:rgba(34,197,94,.22);color:#15803d;border-radius:2px;padding:0
         <div class="prog-sub" id="prog-sub">Preparing…</div>
         <div class="prog-track"><div class="prog-fill" id="prog-bar" style="width:0%"></div></div>
         <div class="prog-pct" id="prog-pct">0%</div>
+        <div class="prog-detail" id="prog-detail"></div>
+        <div class="prog-page-track" id="prog-page-track" style="display:none"><div class="prog-page-fill" id="prog-page-bar" style="width:0%"></div></div>
         <div class="stage-list" id="stage-list"></div>
       </div>
     </div>
@@ -489,16 +496,87 @@ async function extract(file){
       let text='';
       const pageTexts=[];
       const pageData=[];
+      let ocrWorker=null;
+      let ocrPageCount=0;
+
+      // Helper: lazy-init Tesseract worker
+      async function getOcrWorker(){
+        if(ocrWorker) return ocrWorker;
+        ocrWorker=await Tesseract.createWorker('eng',1,{
+          logger:()=>{} // silence internal logs
+        });
+        return ocrWorker;
+      }
+
+      // Helper: rasterise a PDF page to a canvas at given scale
+      async function rasterPage(page, scale=2.0){
+        const vp=page.getViewport({scale});
+        const cv=document.createElement('canvas');
+        cv.width=vp.width; cv.height=vp.height;
+        await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+        return cv;
+      }
+
+      const detail=$('prog-detail');
+      const pageTrack=$('prog-page-track');
+      const pageBar=$('prog-page-bar');
+      if(pageTrack) pageTrack.style.display='block';
+
       for(let p=1;p<=pageCount;p++){
+        await new Promise(resolve=>setTimeout(resolve,0));
+
+        // Update per-page progress
+        const pct=Math.round((p-1)/pageCount*100);
+        if(pageBar) pageBar.style.width=pct+'%';
+        if(detail) detail.textContent=`${file.name} — page ${p} of ${pageCount}`;
+
         const page=await pdfDoc.getPage(p);
+
+        // Try native text layer first
         const tc=await page.getTextContent();
         const items=tc.items.filter(i=>i.str&&i.str.trim());
-        const pt=items.map(i=>i.str).join(' ');
+        const nativeText=items.map(i=>i.str).join(' ').trim();
+
+        let pt=nativeText;
+        let usedOcr=false;
+
+        // If native text is sparse (scanned/image PDF), fall back to OCR
+        // Heuristic: fewer than 30 chars per page is almost certainly a scan
+        if(nativeText.length < 30){
+          usedOcr=true;
+          ocrPageCount++;
+          if(detail){
+            detail.innerHTML=`${file.name} — page ${p} of ${pageCount} <span class="ocr-badge"><i class="ti ti-eye"></i> OCR</span>`;
+          }
+          try{
+            const worker=await getOcrWorker();
+            const canvas=await rasterPage(page, 2.0);
+            const result=await worker.recognize(canvas);
+            pt=result.data.text.trim()||nativeText;
+          }catch(ocrErr){
+            console.warn('OCR failed page',p,ocrErr);
+            pt=nativeText; // fall back gracefully
+          }
+        }
+
         pageTexts.push(pt);
         pageData.push(items);
         text+=pt+'\n\n';
       }
-      return{type:'pdf',text:text.trim(),html:null,pdfDoc,pageCount,pageTexts,pageData,data:buf};
+
+      if(pageBar) pageBar.style.width='100%';
+      if(detail){
+        if(ocrPageCount>0){
+          detail.innerHTML=`Extracted ${pageCount} pages <span class="ocr-badge"><i class="ti ti-eye"></i> OCR used on ${ocrPageCount} page${ocrPageCount>1?'s':''}</span>`;
+        } else {
+          detail.textContent=`Extracted ${pageCount} pages (native text layer)`;
+        }
+      }
+
+      // Terminate OCR worker if it was used
+      if(ocrWorker) ocrWorker.terminate();
+
+      return{type:'pdf',text:text.trim(),html:null,pdfDoc,pageCount,pageTexts,pageData,data:buf,ocrPageCount};
     }catch(e){
       return{type:'text',text:'[PDF parse error: '+e.message+']',html:null};
     }
@@ -668,38 +746,71 @@ document.querySelectorAll('[data-grp="watch"]').forEach(el=>el.addEventListener(
 
 // ── Progress ───────────────────────────────────────────────────
 const STAGES=[
-  [10,'Reading files','Parsing document bytes'],
-  [25,'Extracting content','Converting to structured text'],
-  [42,'Normalizing','Splitting into comparable blocks'],
-  [58,'Aligning sections','Matching content between versions'],
-  [74,'Detecting changes','Running diff algorithm'],
-  [90,'Classifying','Scoring severity and tagging categories'],
+  [5,'Reading files','Loading document bytes…'],
+  [30,'Extracting text','Parsing pages — OCR applied where needed'],
+  [50,'Normalizing','Splitting into comparable blocks'],
+  [65,'Aligning sections','Matching content between versions'],
+  [80,'Detecting changes','Running diff algorithm'],
+  [92,'Classifying','Scoring severity and tagging categories'],
   [100,'Complete','Comparison ready'],
 ];
+function setStage(i,title,sub){
+  const pct=STAGES[i][0];
+  $('prog-title').textContent=title||STAGES[i][1];
+  $('prog-sub').textContent=sub||STAGES[i][2];
+  $('prog-bar').style.width=pct+'%';$('prog-pct').textContent=pct+'%';
+  if(i>0){const p=$('si-'+(i-1));p.className='si done';if(!p.querySelector('.si-check'))p.innerHTML+=`<i class="ti ti-check si-check"></i>`;}
+  $('si-'+i).className='si active';
+  // Hide per-page track when moving past extraction stage
+  if(i>1){const t=$('prog-page-track');if(t)t.style.display='none';}
+}
 async function runCompare(){
   if(!S.oldFile||!S.newFile){$('err-msg').textContent='Upload both files first.';$('err-msg').classList.remove('hidden');return;}
   showPage('progress');
   const sl=$('stage-list');sl.innerHTML='';
   STAGES.forEach(([,l],i)=>{const d=document.createElement('div');d.className='si';d.id='si-'+i;d.innerHTML=`<div class="si-dot"></div><span>${l}</span>`;sl.appendChild(d);});
-  for(let i=0;i<STAGES.length;i++){
-    const[pct,title,sub]=STAGES[i];
-    $('prog-title').textContent=title;$('prog-sub').textContent=sub;
-    $('prog-bar').style.width=pct+'%';$('prog-pct').textContent=pct+'%';
-    if(i>0){const p=$('si-'+(i-1));p.className='si done';p.innerHTML+=`<i class="ti ti-check si-check"></i>`;}
-    $('si-'+i).className='si active';
-    await new Promise(r=>setTimeout(r,300));
-  }
-  const last=$('si-'+(STAGES.length-1));last.className='si done';last.innerHTML+=`<i class="ti ti-check si-check"></i>`;
-  $('prog-ico').innerHTML='<i class="ti ti-check" style="font-size:36px;color:var(--green)"></i>';
-  $('prog-ico').classList.remove('spin');
   try{
-    const[oc,nc]=await Promise.all([extract(S.oldFile),extract(S.newFile)]);
+    // Stage 0: Reading files
+    setStage(0);
+    await new Promise(r=>setTimeout(r,0));
+
+    // Extract sequentially so per-page progress is clear (not parallel)
+    const oc=await extract(S.oldFile);
+    const nc=await extract(S.newFile);
     S.oldContent=oc;S.newContent=nc;
     S.oldText=oc.text;S.newText=nc.text;
+
+    // Stage 1: Extracted — show OCR summary if any
+    setStage(1);
+    const totalOcr=(oc.ocrPageCount||0)+(nc.ocrPageCount||0);
+    const detailEl=$('prog-detail');
+    if(detailEl && totalOcr>0){
+      detailEl.innerHTML=`Text extracted — OCR applied to ${totalOcr} scanned page${totalOcr>1?'s':''}`;
+    } else if(detailEl){
+      detailEl.textContent='Text extracted from native layer';
+    }
+    await new Promise(r=>setTimeout(r,0));
+
+    // Stage 2-3: Diff
+    setStage(2);
+    await new Promise(r=>setTimeout(r,0));
     const isXlsx=oc.type==='xlsx'||nc.type==='xlsx';
+    setStage(3);
+    await new Promise(r=>setTimeout(r,0));
     S.changes=isXlsx?diffXlsx(oc,nc):diffTexts(S.oldText,S.newText);
+
+    // Stage 4-5: Classify
+    setStage(4);
+    await new Promise(r=>setTimeout(r,0));
+    setStage(5);
+    await new Promise(r=>setTimeout(r,0));
     S.active=S.changes[0]||null;
-    await new Promise(r=>setTimeout(r,300));
+
+    // Stage 6: Done
+    setStage(6);
+    const last=$('si-'+(STAGES.length-1));last.className='si done';if(!last.querySelector('.si-check'))last.innerHTML+=`<i class="ti ti-check si-check"></i>`;
+    $('prog-ico').innerHTML='<i class="ti ti-check" style="font-size:36px;color:var(--green)"></i>';
+    await new Promise(r=>setTimeout(r,250));
     buildViewer();showPage('viewer');
   }catch(e){
     console.error(e);showPage('upload');
@@ -1025,12 +1136,19 @@ function renderSheet(container,rows,sheetName,chMap,side){
 async function renderPdfPane(container,content,byIdx,side){
   container.innerHTML='<div class="loading-pane"><i class="ti ti-loader spin"></i> Rendering PDF…</div>';
   if(!content.pdfDoc){container.innerHTML='<div class="loading-pane">PDF not available</div>';return;}
-  const wrap=document.createElement('div');wrap.className='pdf-wrap';
-  container.innerHTML='';container.appendChild(wrap);
   const SCALE=1.6;
 
   for(let p=1;p<=content.pageCount;p++){
+    // Yield to main thread so each page paints immediately as it arrives
+    await new Promise(resolve=>setTimeout(resolve,0));
     try{
+      // On first page: swap spinner for the wrap container
+      if(p===1){
+        const wrap=document.createElement('div');wrap.className='pdf-wrap';
+        container.innerHTML='';
+        container.appendChild(wrap);
+      }
+      const wrap=container.querySelector('.pdf-wrap');
       const page=await content.pdfDoc.getPage(p);
       const vp=page.getViewport({scale:SCALE});
       const pageWrap=document.createElement('div');pageWrap.className='pdf-page-wrap';
