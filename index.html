@@ -6,50 +6,40 @@
   <title>DiffIQ — Document Change Intelligence</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0d1117">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
   <style>
     :root {
-      --bg: #0d1117; --surface: #161b22; --surface-hover: #1c2128;
-      --border: #30363d; --text: #c9d1d9; --text-dim: #8b949e;
-      --primary: #238636; --primary-hover: #2ea043;
-      --danger: #f85149; --added-bg: rgba(46, 160, 67, 0.15); --added-text: #3fb950;
-      --deleted-bg: rgba(248, 81, 73, 0.15); --deleted-text: #f85149;
-      --modified-bg: rgba(210, 153, 34, 0.15); --modified-text: #d29922;
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #c9d1d9; --text-dim: #8b949e; --primary: #238636; --primary-hover: #2ea043;
+      --added: #3fb950; --deleted: #f85149; --modified: #d29922; --moved: #8b949e;
     }
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
     
-    /* Header */
     header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-    .logo { font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .logo { font-size: 1.25rem; font-weight: 700; }
     .header-actions { display: flex; gap: 0.5rem; }
     
-    /* Buttons */
-    .btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.2s; }
-    .btn:hover { background: var(--surface-hover); border-color: var(--text-dim); }
+    .btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+    .btn:hover { background: #1c2128; border-color: var(--text-dim); }
     .btn-primary { background: var(--primary); border-color: var(--primary); color: white; }
     .btn-primary:hover { background: var(--primary-hover); }
-    .btn-danger { background: var(--danger); border-color: var(--danger); color: white; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* Main Layout */
     main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     
-    /* Upload Section */
-    #upload-section { padding: 2rem; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
-    .hero-text { text-align: center; margin-bottom: 2rem; }
-    .hero-text h1 { font-size: 1.5rem; margin: 0 0 0.5rem 0; }
-    .hero-text p { color: var(--text-dim); margin: 0; max-width: 600px; }
+    #upload-section { flex: 1; overflow-y: auto; padding: 2rem; display: flex; flex-direction: column; align-items: center; }
+    .hero { text-align: center; margin-bottom: 2rem; }
+    .hero h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .hero p { color: var(--text-dim); max-width: 600px; }
     
     .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%; max-width: 900px; margin-bottom: 1.5rem; }
     .drop-zone { border: 2px dashed var(--border); border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface); }
     .drop-zone:hover, .drop-zone.active { border-color: var(--primary); background: rgba(35, 134, 54, 0.05); }
-    .drop-zone h3 { margin: 0 0 0.5rem 0; font-size: 1rem; }
-    .drop-zone p { color: var(--text-dim); font-size: 0.85rem; margin: 0 0 1rem 0; }
+    .drop-zone h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+    .drop-zone p { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1rem; }
     .file-types { font-size: 0.75rem; color: var(--text-dim); background: var(--bg); padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; }
     
-    /* Settings */
-    .settings-panel { width: 100%; max-width: 900px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; }
+    .settings { width: 100%; max-width: 900px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; }
     .setting-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
     .setting-row:last-child { margin-bottom: 0; }
     .setting-label { font-size: 0.85rem; font-weight: 600; min-width: 80px; }
@@ -61,66 +51,70 @@
     .compare-btn-container { text-align: center; }
     .btn-large { padding: 0.6rem 2rem; font-size: 1rem; font-weight: 600; }
 
-    /* Processing Overlay */
     .overlay { position: fixed; inset: 0; background: rgba(13, 17, 23, 0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; }
     .overlay.hidden { display: none; }
     .progress-box { background: var(--surface); border: 1px solid var(--border); padding: 2rem; border-radius: 12px; width: 320px; text-align: center; }
-    .progress-box h3 { margin-top: 0; }
+    .progress-box h3 { margin-bottom: 1rem; }
     .progress-bar-bg { background: var(--border); height: 6px; border-radius: 3px; margin: 1rem 0; overflow: hidden; }
     .progress-bar-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.3s ease; }
-    .progress-text { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.25rem; }
+    .progress-text { color: var(--text-dim); font-size: 0.85rem; }
 
-    /* Results Section */
-    #results-section { flex: 1; display: flex; flex-direction: column; border-top: 1px solid var(--border); overflow: hidden; }
+    #results-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     #results-section.hidden { display: none; }
     
     .results-toolbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
-    .stats-group { display: flex; gap: 1rem; font-size: 0.85rem; }
-    .stat-item { display: flex; align-items: center; gap: 0.4rem; }
-    .stat-item.added { color: var(--added-text); }
-    .stat-item.deleted { color: var(--deleted-text); }
-    .stat-item.modified { color: var(--modified-text); }
+    .stats-group { display: flex; gap: 1rem; font-size: 0.85rem; align-items: center; }
+    .stat-label { font-weight: 600; margin-right: 0.5rem; }
+    .stat-item { display: flex; align-items: center; gap: 0.25rem; }
     
-    .view-controls { display: flex; align-items: center; gap: 0.75rem; }
-    .legend { display: flex; gap: 0.75rem; font-size: 0.75rem; color: var(--text-dim); }
+    .view-controls { display: flex; gap: 0.5rem; }
+    .legend { display: flex; gap: 0.75rem; font-size: 0.75rem; color: var(--text-dim); align-items: center; }
     .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-    
+    .legend-dot.added { background: var(--added); }
+    .legend-dot.deleted { background: var(--deleted); }
+    .legend-dot.modified { background: var(--modified); }
+    .legend-dot.moved { background: var(--moved); }
+
     .results-content { flex: 1; display: flex; overflow: hidden; }
-    .diff-pane { flex: 1; overflow: auto; padding: 1rem; border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; }
-    .preview-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .preview-header { background: var(--surface); padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 600; border-bottom: 1px solid var(--border); color: var(--text-dim); display: flex; justify-content: space-between; }
+    .diff-pane { flex: 2; overflow: auto; padding: 1rem; border-right: 1px solid var(--border); background: var(--bg); }
+    .preview-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border); }
+    .preview-box { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-bottom: 1px solid var(--border); }
+    .preview-box:last-child { border-bottom: none; }
+    .preview-header { background: var(--surface); padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 600; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+    .preview-sub { color: var(--text-dim); font-weight: 400; }
     .preview-frame { flex: 1; border: none; background: white; width: 100%; }
     .preview-text { flex: 1; overflow: auto; padding: 1rem; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; color: var(--text); background: var(--bg); }
     
-    .diff-line { font-family: monospace; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; width: 100%; max-width: 900px; }
-    .diff-added { background: var(--added-bg); color: var(--added-text); }
-    .diff-removed { background: var(--deleted-bg); color: var(--deleted-text); }
-    
-    .details-panel { width: 300px; background: var(--surface); border-left: 1px solid var(--border); padding: 1rem; overflow-y: auto; font-size: 0.85rem; }
-    .details-panel h4 { margin-top: 0; font-size: 0.9rem; }
+    .details-panel { width: 250px; background: var(--surface); padding: 1rem; overflow-y: auto; font-size: 0.85rem; }
     .details-placeholder { color: var(--text-dim); text-align: center; margin-top: 2rem; font-style: italic; }
 
+    .diff-line { font-family: monospace; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
+    .diff-added { background: rgba(46, 160, 67, 0.15); color: var(--added); }
+    .diff-removed { background: rgba(248, 81, 73, 0.15); color: var(--deleted); }
+
+    .hidden { display: none !important; }
     .hidden-input { display: none; }
+    
     .split-view .results-content { flex-direction: row; }
     .split-view .preview-pane { flex-direction: row; }
-    .split-view .preview-pane > div { flex: 1; border-right: 1px solid var(--border); }
-    .split-view .preview-pane > div:last-child { border-right: none; }
+    .split-view .preview-box { border-right: 1px solid var(--border); border-bottom: none; }
+    .split-view .preview-box:last-child { border-right: none; }
   </style>
 </head>
 <body>
   <header>
-    <div class="logo"><i class="ti ti-file-diff"></i> DiffIQ</div>
+    <div class="logo">DiffIQ</div>
     <div class="header-actions">
-      <button class="btn" id="btn-export"><i class="ti ti-download"></i> Export CSV</button>
-      <button class="btn" id="btn-new"><i class="ti ti-plus"></i> New</button>
-      <button class="btn btn-primary" id="btn-compare-header"><i class="ti ti-play"></i> Compare</button>
+      <button class="btn" id="btn-compare-header">Compare</button>
+      <button class="btn" id="btn-new-header">New</button>
+      <button class="btn" id="btn-export">Export CSV</button>
+      <button class="btn">KD</button>
     </div>
   </header>
 
   <main>
-    <!-- UPLOAD SECTION -->
     <div id="upload-section">
-      <div class="hero-text">
+      <div class="hero">
         <h1>Document Change Intelligence</h1>
         <p>Upload two versions of any document to detect, visualize, and understand every meaningful change between them.</p>
       </div>
@@ -140,7 +134,7 @@
         </div>
       </div>
 
-      <div class="settings-panel">
+      <div class="settings">
         <div class="setting-row">
           <span class="setting-label">Sensitivity</span>
           <div class="pill-group">
@@ -165,7 +159,6 @@
       </div>
     </div>
 
-    <!-- PROCESSING OVERLAY -->
     <div id="processing-overlay" class="overlay hidden">
       <div class="progress-box">
         <h3>Processing</h3>
@@ -174,62 +167,57 @@
           <div class="progress-bar-fill" id="progress-fill"></div>
         </div>
         <div class="progress-text" id="progress-percent">0%</div>
-        <button class="btn btn-danger" id="btn-cancel" style="margin-top: 1rem; width: 100%;">Cancel</button>
       </div>
     </div>
 
-    <!-- RESULTS SECTION -->
     <div id="results-section" class="hidden">
       <div class="results-toolbar">
         <div class="stats-group">
-          <span style="font-weight: 600; margin-right: 0.5rem;">Comparison</span>
-          <span class="stat-item added"><i class="ti ti-plus"></i> <span id="stat-added">0</span> Added</span>
-          <span class="stat-item deleted"><i class="ti ti-minus"></i> <span id="stat-deleted">0</span> Deleted</span>
-          <span class="stat-item modified"><i class="ti ti-pencil"></i> <span id="stat-modified">0</span> Modified</span>
-          <span class="stat-item"><i class="ti ti-arrows-move"></i> <span id="stat-moved">0</span> Moved</span>
+          <span class="stat-label">Comparison</span>
+          <span class="stat-item"><span id="stat-added">0</span> Added</span>
+          <span class="stat-item"><span id="stat-deleted">0</span> Deleted</span>
+          <span class="stat-item"><span id="stat-modified">0</span> Modified</span>
+          <span class="stat-item"><span id="stat-moved">0</span> Moved</span>
         </div>
         <div class="view-controls">
-          <button class="btn" id="btn-prev"><i class="ti ti-chevron-left"></i> Prev</button>
-          <button class="btn" id="btn-next">Next <i class="ti ti-chevron-right"></i></button>
-          <button class="btn" id="btn-toggle-view"><i class="ti ti-columns"></i> Side-by-side comparison</button>
+          <button class="btn" id="btn-prev">Prev</button>
+          <button class="btn" id="btn-next">Next</button>
+          <button class="btn" id="btn-toggle-view">Side-by-side comparison</button>
         </div>
         <div class="legend">
-          <span><span class="legend-dot" style="background: var(--added-text);"></span>Added</span>
-          <span><span class="legend-dot" style="background: var(--deleted-text);"></span>Deleted</span>
-          <span><span class="legend-dot" style="background: var(--modified-text);"></span>Modified</span>
-          <span><span class="legend-dot" style="background: var(--text-dim);"></span>Moved</span>
+          <span><span class="legend-dot added"></span>Added</span>
+          <span><span class="legend-dot deleted"></span>Deleted</span>
+          <span><span class="legend-dot modified"></span>Modified</span>
+          <span><span class="legend-dot moved"></span>Moved</span>
         </div>
+        <button class="btn" id="btn-new-results">New comparison</button>
       </div>
 
-      <div class="results-content" id="results-content">
-        <div class="diff-pane" id="diff-pane">
-          <!-- Diff content (Canvases or Text) injected here -->
-        </div>
-        <div class="preview-pane" id="preview-pane">
-          <div>
+      <div class="results-content">
+        <div class="diff-pane" id="diff-pane"></div>
+        <div class="preview-pane">
+          <div class="preview-box">
             <div class="preview-header">
               <span>Old version</span>
-              <span style="color: var(--text-dim); font-weight: 400;">Original</span>
+              <span class="preview-sub">Original</span>
             </div>
             <div id="preview-old"></div>
           </div>
-          <div>
+          <div class="preview-box">
             <div class="preview-header">
               <span>New version</span>
-              <span style="color: var(--text-dim); font-weight: 400;">Updated</span>
+              <span class="preview-sub">Updated</span>
             </div>
             <div id="preview-new"></div>
           </div>
         </div>
         <div class="details-panel">
-          <h4>Change Details</h4>
           <div class="details-placeholder">Select a change to see details</div>
         </div>
       </div>
     </div>
   </main>
 
-  <!-- External Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -242,19 +230,18 @@
     let isProcessing = false;
     let isSideBySide = false;
 
-    // UI Elements
     const zoneOld = document.getElementById('zone-old'), zoneNew = document.getElementById('zone-new');
     const fileOld = document.getElementById('file-old'), fileNew = document.getElementById('file-new');
     const btnCompare = document.getElementById('btn-compare'), btnCompareHeader = document.getElementById('btn-compare-header');
-    const btnNew = document.getElementById('btn-new'), btnExport = document.getElementById('btn-export');
+    const btnNewHeader = document.getElementById('btn-new-header'), btnNewResults = document.getElementById('btn-new-results');
+    const btnExport = document.getElementById('btn-export');
     const uploadSection = document.getElementById('upload-section'), resultsSection = document.getElementById('results-section');
     const overlay = document.getElementById('processing-overlay');
     const progressText = document.getElementById('progress-text'), progressFill = document.getElementById('progress-fill');
-    const progressPercent = document.getElementById('progress-percent'), btnCancel = document.getElementById('btn-cancel');
+    const progressPercent = document.getElementById('progress-percent');
     const diffPane = document.getElementById('diff-pane'), previewOld = document.getElementById('preview-old'), previewNew = document.getElementById('preview-new');
-    const resultsContent = document.getElementById('results-content');
+    const resultsContent = document.querySelector('.results-content');
 
-    // Pill Toggles
     document.querySelectorAll('.pill').forEach(pill => {
       pill.addEventListener('click', () => {
         const group = pill.parentElement;
@@ -279,8 +266,6 @@
     setupDropZone(zoneOld, fileOld, f => oldFile = f);
     setupDropZone(zoneNew, fileNew, f => newFile = f);
 
-    btnCancel.addEventListener('click', () => { isProcessing = false; });
-
     function resetApp() {
       isProcessing = false; oldFile = null; newFile = null; 
       fileOld.value = ''; fileNew.value = '';
@@ -295,7 +280,8 @@
       document.getElementById('stat-moved').textContent = '0';
     }
 
-    btnNew.addEventListener('click', resetApp);
+    btnNewHeader.addEventListener('click', resetApp);
+    btnNewResults.addEventListener('click', resetApp);
 
     async function startComparison() {
       if (!oldFile || !newFile) return alert('Please select both old and new documents.');
@@ -328,10 +314,10 @@
       isSideBySide = !isSideBySide;
       if (isSideBySide) {
         resultsContent.classList.add('split-view');
-        document.getElementById('btn-toggle-view').innerHTML = '<i class="ti ti-stack"></i> Unified view';
+        document.getElementById('btn-toggle-view').textContent = 'Unified view';
       } else {
         resultsContent.classList.remove('split-view');
-        document.getElementById('btn-toggle-view').innerHTML = '<i class="ti ti-columns"></i> Side-by-side comparison';
+        document.getElementById('btn-toggle-view').textContent = 'Side-by-side comparison';
       }
     });
 
@@ -442,7 +428,6 @@
           else { html += `<span>${escapeHtml(p.value)}</span>`; }
         });
         
-        // Simple heuristic for modified (a deletion immediately followed by an addition on similar lines)
         modified = Math.min(added, deleted); 
         
         document.getElementById('stat-added').textContent = added;
