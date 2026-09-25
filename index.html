@@ -245,11 +245,13 @@ mark.ad{background:rgba(34,197,94,.22);color:#15803d;border-radius:2px;padding:0
 .di-col{flex:1;min-width:0}
 .di-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
 .di-box{border-radius:6px;padding:8px 10px;font-size:12px;line-height:1.6}
-.di-old{background:var(--red-bg);border:1px solid var(--red-bd);color:#fca5a5}
-.di-new{background:var(--green-bg);border:1px solid var(--green-bd);color:#86efac}
+.di-old{background:var(--red-bg);border:1px solid var(--red-bd);color:#d1d5db}
+.di-new{background:var(--green-bg);border:1px solid var(--green-bd);color:#d1d5db}
+.di-old mark.rm{background:rgba(239,68,68,0.35);color:#fca5a5;border-radius:3px;padding:1px 3px;font-weight:700;font-style:normal;text-decoration:line-through}
+.di-new mark.ad{background:rgba(34,197,94,0.3);color:#86efac;border-radius:3px;padding:1px 3px;font-weight:700;font-style:normal}
 .di-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.dchip{font-size:11px;font-weight:500;padding:3px 9px;border-radius:4px}
-.dch-rm{background:var(--red-dim);color:#fca5a5}
+.dchip{font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;font-family:monospace}
+.dch-rm{background:var(--red-dim);color:#fca5a5;text-decoration:line-through}
 .dch-add{background:var(--green-dim);color:#86efac}
 
 .loading-pane{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text2);font-size:12px;gap:8px}
@@ -608,7 +610,15 @@ function lcs(a,b){
   return r;
 }
 function inlineDiff(o,n,side){
-  const ot=tokenize(o||''),nt=tokenize(n||'');
+  if(!o&&!n)return '';
+  // Character-level diff for short strings (numbers, dates), word-level for longer
+  const useChar=(o+n).length<80;
+  let ot,nt;
+  if(useChar){
+    ot=[...((o||''))]; nt=[...((n||''))];
+  } else {
+    ot=tokenize(o||''); nt=tokenize(n||'');
+  }
   const L=lcs(ot,nt);
   const lo=new Set(L.map(([a])=>a)),ln=new Set(L.map(([,b])=>b));
   let h='';
@@ -617,7 +627,19 @@ function inlineDiff(o,n,side){
   return h;
 }
 function splitSents(t){
-  return t.replace(/\r\n/g,'\n').split(/(?<=[.!?\n])\s+/).map(s=>s.trim()).filter(Boolean);
+  // First split on newlines (catches table rows extracted as lines)
+  const byLine=t.replace(/\r\n/g,'\n').split('\n').map(s=>s.trim()).filter(Boolean);
+  const out=[];
+  for(const line of byLine){
+    // If a line looks like a table row (has tabs or multiple $ / numbers), keep it whole
+    if(/\t|\$[\d,]+|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(line)){
+      out.push(line);
+    } else {
+      // Split on sentence boundaries
+      line.split(/(?<=[.!?])\s+(?=[A-Z(])/).forEach(s=>{if(s.trim())out.push(s.trim());});
+    }
+  }
+  return out.length?out:[t.trim()];
 }
 function classify(o,n){
   const numRe=/[\$\u20b9\u00a3\u20ac]?\s*[\d,]+(?:\.\d+)?(?:\s*(?:lakh|crore|million|billion|k|%|days?|months?|years?))?/gi;
@@ -1196,6 +1218,21 @@ function highlightPdfPage(hlCanvas,pageWrap,items,vp,pageNum,content,byIdx){
     tokens.push({str:item.str,x1,y1:y1-fh*0.15,x2,y2:y1+fh*1.1});
   }
 
+  // Build a flat list of word-level token spans for precise matching
+  function tokWords(tokList){
+    const out=[];
+    for(const tok of tokList){
+      const words=tok.str.split(/\s+/);
+      const perW=tok.x2>tok.x1&&words.length>1?(tok.x2-tok.x1)/words.length:0;
+      words.forEach((w,wi)=>{
+        if(!w.trim())return;
+        out.push({str:w,x1:tok.x1+wi*perW,x2:perW?tok.x1+(wi+1)*perW:tok.x2,y1:tok.y1,y2:tok.y2,tokIdx:tokens.indexOf(tok)});
+      });
+    }
+    return out;
+  }
+  const wordTokens=tokWords(tokens);
+
   byIdx.forEach((ch,idx)=>{
     const sentText=(ch.oldText||ch.newText||'').trim();
     if(!sentText||sentText.length<4)return;
@@ -1204,6 +1241,7 @@ function highlightPdfPage(hlCanvas,pageWrap,items,vp,pageNum,content,byIdx){
     const anchor=sentLow.replace(/\s+/g,' ').slice(0,30);
     if(!pageLow.includes(anchor.slice(0,20)))return;
 
+    // Find the best-matching token span for this sentence
     const sentWords=sentText.replace(/[^a-zA-Z0-9ऀ-ॿ\s]/g,' ').split(/\s+/).filter(w=>w.length>=2).map(w=>w.toLowerCase());
     if(!sentWords.length)return;
 
@@ -1227,23 +1265,57 @@ function highlightPdfPage(hlCanvas,pageWrap,items,vp,pageNum,content,byIdx){
     const spanTokens=tokens.slice(bestSpan.start,bestSpan.end+1);
     if(!spanTokens.length)return;
 
-    const lines=[];let curLine=null;
-    for(const tok of spanTokens){
-      if(!curLine||Math.abs(tok.y1-curLine.y1)>6){curLine={y1:tok.y1,y2:tok.y2,x1:tok.x1,x2:tok.x2};lines.push(curLine);}
-      else{curLine.x1=Math.min(curLine.x1,tok.x1);curLine.x2=Math.max(curLine.x2,tok.x2);curLine.y2=Math.max(curLine.y2,tok.y2);}
+    // For modified changes: only highlight the specific changed words, not the whole block
+    // Compare old vs new to find which words changed
+    let changedWordSet=null;
+    if(ch.type==='modified'&&ch.rmText&&ch.addText){
+      // Words that appear in rmText (on old side) or addText (on new side) are the changed ones
+      const rmWords=new Set(ch.rmText.toLowerCase().replace(/[^a-zA-Z0-9]/g,' ').split(/\s+/).filter(w=>w.length>=2));
+      const addWords=new Set(ch.addText.toLowerCase().replace(/[^a-zA-Z0-9]/g,' ').split(/\s+/).filter(w=>w.length>=2));
+      changedWordSet=new Set([...rmWords,...addWords]);
     }
 
     const fillColor=HL[ch.type]||HL.modified;
     const borderColor=BORDER[ch.type]||BORDER.modified;
-    for(const line of lines){
-      const pad=1;const lx=line.x1-pad,ly=line.y1-pad;const lw=line.x2-line.x1+pad*2,lh=line.y2-line.y1+pad*2;
-      ctx.fillStyle=fillColor;ctx.fillRect(lx,ly,lw,lh);
-      ctx.fillStyle=borderColor;ctx.fillRect(lx,ly,2.5,lh);
-      ctx.fillStyle=borderColor;ctx.fillRect(lx,ly+lh-1.5,lw,1.5);
+    const fillColorDim='rgba(245,158,11,0.04)'; // very faint background for context
+
+    // Draw faint background over the whole matched span for context
+    const spanLines=[];let curLine=null;
+    for(const tok of spanTokens){
+      if(!curLine||Math.abs(tok.y1-curLine.y1)>6){curLine={y1:tok.y1,y2:tok.y2,x1:tok.x1,x2:tok.x2};spanLines.push(curLine);}
+      else{curLine.x1=Math.min(curLine.x1,tok.x1);curLine.x2=Math.max(curLine.x2,tok.x2);curLine.y2=Math.max(curLine.y2,tok.y2);}
+    }
+    ctx.fillStyle=fillColorDim;
+    for(const line of spanLines){
+      ctx.fillRect(line.x1-1,line.y1-1,line.x2-line.x1+2,line.y2-line.y1+2);
     }
 
-    const allX1=Math.min(...lines.map(l=>l.x1));const allY1=Math.min(...lines.map(l=>l.y1));
-    const allX2=Math.max(...lines.map(l=>l.x2));const allY2=Math.max(...lines.map(l=>l.y2));
+    // If we know which words changed, highlight only those; else highlight the full span
+    if(changedWordSet&&changedWordSet.size>0){
+      for(const tok of spanTokens){
+        const tw=tok.str.toLowerCase().replace(/[^a-zA-Z0-9]/g,'');
+        if(!tw||!changedWordSet.has(tw))continue;
+        const pad=1;
+        ctx.fillStyle=fillColor;ctx.fillRect(tok.x1-pad,tok.y1-pad,tok.x2-tok.x1+pad*2,tok.y2-tok.y1+pad*2);
+        // Bold underline for changed word
+        ctx.fillStyle=borderColor;ctx.fillRect(tok.x1-pad,tok.y2,tok.x2-tok.x1+pad*2,2);
+        // Left accent bar
+        ctx.fillStyle=borderColor;ctx.fillRect(tok.x1-pad,tok.y1-pad,2,tok.y2-tok.y1+pad*2+2);
+      }
+    } else {
+      // Fallback: highlight full span (for added/deleted or when no word-level diff available)
+      ctx.fillStyle=fillColor;
+      for(const line of spanLines){
+        const pad=1;const lx=line.x1-pad,ly=line.y1-pad;const lw=line.x2-line.x1+pad*2,lh=line.y2-line.y1+pad*2;
+        ctx.fillRect(lx,ly,lw,lh);
+        ctx.fillStyle=borderColor;ctx.fillRect(lx,ly,2,lh);ctx.fillStyle=fillColor;
+      }
+      ctx.fillStyle=borderColor;
+      for(const line of spanLines)ctx.fillRect(line.x1-1,line.y2,line.x2-line.x1+2,1.5);
+    }
+
+    const allX1=Math.min(...spanLines.map(l=>l.x1));const allY1=Math.min(...spanLines.map(l=>l.y1));
+    const allX2=Math.max(...spanLines.map(l=>l.x2));const allY2=Math.max(...spanLines.map(l=>l.y2));
     const div=document.createElement('div');
     div.style.cssText=`position:absolute;left:${allX1-2}px;top:${allY1-2}px;width:${allX2-allX1+4}px;height:${allY2-allY1+4}px;cursor:pointer;z-index:10;`;
     div.title=ch.type.toUpperCase()+': '+sentText.slice(0,100);
@@ -1274,8 +1346,17 @@ function renderList(){
     if(c.cats?.includes('numeric'))pills+=`<span class="cpill" style="background:var(--blue-bg);color:var(--blue)">num</span>`;
     if(c.cats?.includes('date'))pills+=`<span class="cpill" style="background:var(--purple-bg);color:var(--purple)">date</span>`;
     if(c.sheet)pills+=`<span class="cpill" style="background:var(--card);color:var(--text2)">${c.sheet}!${c.cellRef||''}</span>`;
-    const preview=esc((c.oldText||c.newText).slice(0,120));
-    d.innerHTML=`<div class="ci-head"><span class="cnum">#${c.id}</span><span class="cbadge ${cbM[c.type]||'cb-mod'}">${c.type}</span><span class="csev ${csM[c.sev]||'cs-low'}">${c.sev}</span></div><div class="ci-text">${preview}</div>${pills?`<div class="ci-pills">${pills}</div>`:''}`;
+    let preview='';
+    if(c.type==='modified'&&c.rmText&&c.addText){
+      preview=`<span style="color:#fca5a5;text-decoration:line-through">${esc(c.rmText.slice(0,50))}${c.rmText.length>50?'…':''}</span> <span style="color:var(--text3)">→</span> <span style="color:#86efac">${esc(c.addText.slice(0,50))}${c.addText.length>50?'…':''}</span>`;
+    } else if(c.type==='deleted'){
+      preview=`<span style="color:#fca5a5;text-decoration:line-through">${esc((c.oldText||'').slice(0,80))}${(c.oldText||'').length>80?'…':''}</span>`;
+    } else if(c.type==='added'){
+      preview=`<span style="color:#86efac">+ ${esc((c.newText||'').slice(0,80))}${(c.newText||'').length>80?'…':''}</span>`;
+    } else {
+      preview=`<span style="color:var(--text2)">${esc((c.oldText||c.newText).slice(0,80))}${(c.oldText||c.newText).length>80?'…':''}</span>`;
+    }
+    d.innerHTML=`<div class="ci-head"><span class="cnum">#${c.id}</span><span class="cbadge ${cbM[c.type]||'cb-mod'}">${c.type}</span><span class="csev ${csM[c.sev]||'cs-low'}">${c.sev}</span></div><div class="ci-text">${preview}</div>${pills?`<div class="ci-pills">${pills}</div>`:''}\`;
     d.addEventListener('click',()=>setActive(c.id));
     cl.appendChild(d);
   });
