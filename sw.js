@@ -1,4 +1,4 @@
-const CACHE = 'docdiff-v2';
+const CACHE = 'docdiff-v3';
 const STATIC = [
   '/',
   '/index.html',
@@ -7,6 +7,10 @@ const STATIC = [
   '/icon-512.png',
   'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css',
   'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+  'https://cdn.jsdelivr.net/npm/diff@5.1.0/dist/diff.min.js'
 ];
 
 self.addEventListener('install', e => {
@@ -26,7 +30,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  if (url.origin === 'https://cdn.jsdelivr.net') {
+  if (url.origin === 'https://cdn.jsdelivr.net' || url.origin === 'https://cdnjs.cloudflare.com') {
     e.respondWith(
       caches.match(e.request).then(r => r || fetch(e.request).then(res => {
         const clone = res.clone();
