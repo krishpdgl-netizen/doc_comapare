@@ -10,13 +10,15 @@
   <style>
     :root {
       --bg: #0d1117; --surface: #161b22; --border: #30363d;
-      --text: #c9d1d9; --text-dim: #8b949e; --primary: #238636;
+      --text: #c9d1d9; --text-dim: #8b949e; --primary: #238636; --danger: #f85149;
     }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; }
     header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
     .logo { font-size: 1.5rem; font-weight: bold; }
-    .btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
+    .btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
     .btn-primary { background: var(--primary); border-color: var(--primary); color: white; }
+    .btn-danger { background: var(--danger); border-color: var(--danger); color: white; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
     main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .upload-area { display: flex; gap: 2rem; padding: 2rem; justify-content: center; }
     .drop-zone { flex: 1; max-width: 400px; border: 2px dashed var(--border); border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.2s; }
@@ -24,7 +26,6 @@
     .drop-zone h3 { margin: 0 0 1rem 0; }
     .drop-zone p { color: var(--text-dim); font-size: 0.9rem; }
     .file-types { font-size: 0.8rem; color: var(--text-dim); margin-top: 1rem; }
-    .actions { text-align: center; margin-bottom: 2rem; }
     .results { flex: 1; display: flex; flex-direction: column; border-top: 1px solid var(--border); overflow: hidden; }
     .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); }
     .tab { padding: 0.75rem 1.5rem; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-dim); }
@@ -37,6 +38,16 @@
     .preview-frame { width: 100%; height: 100%; border: none; background: white; }
     .preview-text { white-space: pre-wrap; word-wrap: break-word; font-family: monospace; color: var(--text); }
     .hidden { display: none !important; }
+
+    /* Progress Overlay */
+    .progress-overlay {
+      position: fixed; inset: 0; background: rgba(13, 17, 23, 0.9);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .progress-box { background: var(--surface); border: 1px solid var(--border); padding: 2rem; border-radius: 12px; width: 350px; text-align: center; }
+    .progress-bar-bg { background: var(--border); height: 8px; border-radius: 4px; margin: 1.5rem 0; overflow: hidden; }
+    .progress-bar-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.2s ease; }
+    .progress-text { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 0.5rem; }
   </style>
 </head>
 <body>
@@ -78,6 +89,18 @@
     </div>
   </main>
 
+  <!-- Progress Overlay -->
+  <div id="progress-overlay" class="progress-overlay hidden">
+    <div class="progress-box">
+      <h3 style="margin-top:0">Processing Document</h3>
+      <div class="progress-text" id="progress-text">Preparing pages...</div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+      <button class="btn btn-danger" id="btn-cancel">Cancel</button>
+    </div>
+  </div>
+
   <!-- External Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -85,14 +108,18 @@
   <script src="https://cdn.jsdelivr.net/npm/diff@5.1.0/dist/diff.min.js"></script>
   
   <script>
-    // Configure PDF.js worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
     let oldFile = null, newFile = null;
+    let isProcessing = false;
     const zoneOld = document.getElementById('zone-old'), zoneNew = document.getElementById('zone-new');
     const fileOld = document.getElementById('file-old'), fileNew = document.getElementById('file-new');
     const btnCompare = document.getElementById('btn-compare'), btnNew = document.getElementById('btn-new');
     const uploadSection = document.getElementById('upload-section'), resultsSection = document.getElementById('results-section');
+    const progressOverlay = document.getElementById('progress-overlay');
+    const progressText = document.getElementById('progress-text');
+    const progressFill = document.getElementById('progress-fill');
+    const btnCancel = document.getElementById('btn-cancel');
 
     function setupDropZone(zone, input, onFile) {
       zone.addEventListener('click', () => input.click());
@@ -105,22 +132,36 @@
     setupDropZone(zoneOld, fileOld, f => oldFile = f);
     setupDropZone(zoneNew, fileNew, f => newFile = f);
 
+    btnCancel.addEventListener('click', () => { isProcessing = false; });
+
     btnNew.addEventListener('click', () => {
-      oldFile = null; newFile = null; fileOld.value = ''; fileNew.value = '';
+      isProcessing = false; oldFile = null; newFile = null; fileOld.value = ''; fileNew.value = '';
       zoneOld.querySelector('p').textContent = 'Drop your original document here or click to browse';
       zoneNew.querySelector('p').textContent = 'Drop the updated document here or click to browse';
       zoneOld.style.borderColor = ''; zoneNew.style.borderColor = '';
       uploadSection.classList.remove('hidden'); resultsSection.classList.add('hidden');
+      document.getElementById('tab-comparison').innerHTML = '';
     });
 
     btnCompare.addEventListener('click', async () => {
       if (!oldFile || !newFile) return alert('Please select both old and new documents.');
+      isProcessing = true;
       btnCompare.disabled = true; btnCompare.textContent = 'Processing...';
+      progressOverlay.classList.remove('hidden');
+      progressFill.style.width = '0%';
+      
       try {
         await runComparison();
-        uploadSection.classList.add('hidden'); resultsSection.classList.remove('hidden');
-      } catch (err) { alert('Error: ' + err.message); } 
-      finally { btnCompare.disabled = false; btnCompare.textContent = 'Compare'; }
+        if (isProcessing) {
+          uploadSection.classList.add('hidden'); resultsSection.classList.remove('hidden');
+        }
+      } catch (err) {
+        if (isProcessing) alert('Error: ' + err.message);
+      } finally {
+        isProcessing = false;
+        btnCompare.disabled = false; btnCompare.textContent = 'Compare';
+        progressOverlay.classList.add('hidden');
+      }
     });
 
     document.querySelectorAll('.tab').forEach(tab => {
@@ -143,25 +184,29 @@
       return { type: 'text', content: await file.text() };
     }
 
-    // EXACT VISUAL PDF DIFF: Renders to canvas and compares pixel data
-    async function comparePdfs(oldData, newData) {
+    // NON-BLOCKING VISUAL PDF DIFF FOR 100+ PAGES
+    async function comparePdfs(oldData, newData, container) {
       const oldPdf = await pdfjsLib.getDocument({ data: oldData }).promise;
       const newPdf = await pdfjsLib.getDocument({ data: newData }).promise;
       const maxPages = Math.max(oldPdf.numPages, newPdf.numPages);
-      let diffCanvases = [];
       
       for (let i = 1; i <= maxPages; i++) {
+        if (!isProcessing) throw new Error('Comparison cancelled by user.');
+        
+        progressText.textContent = `Processing page ${i} of ${maxPages}...`;
+        progressFill.style.width = `${(i / maxPages) * 100}%`;
+
         const oldC = document.createElement('canvas'), newC = document.createElement('canvas'), diffC = document.createElement('canvas');
         let w = 0, h = 0;
         
         if (i <= oldPdf.numPages) {
-          const p = await oldPdf.getPage(i), v = p.getViewport({ scale: 1.5 });
+          const p = await oldPdf.getPage(i), v = p.getViewport({ scale: 1.2 }); // Slightly reduced scale for performance on huge docs
           oldC.width = v.width; oldC.height = v.height;
           await p.render({ canvasContext: oldC.getContext('2d'), viewport: v }).promise;
           w = Math.max(w, v.width); h = Math.max(h, v.height);
         }
         if (i <= newPdf.numPages) {
-          const p = await newPdf.getPage(i), v = p.getViewport({ scale: 1.5 });
+          const p = await newPdf.getPage(i), v = p.getViewport({ scale: 1.2 });
           newC.width = v.width; newC.height = v.height;
           await p.render({ canvasContext: newC.getContext('2d'), viewport: v }).promise;
           w = Math.max(w, v.width); h = Math.max(h, v.height);
@@ -169,33 +214,46 @@
         
         diffC.width = w; diffC.height = h;
         const ctx = diffC.getContext('2d');
-        ctx.globalAlpha = 0.3; ctx.drawImage(newC, 0, 0); ctx.globalAlpha = 1.0; // Dim background
+        ctx.globalAlpha = 0.3; ctx.drawImage(newC, 0, 0); ctx.globalAlpha = 1.0;
         
         const oldCtx = oldC.getContext('2d'), newCtx = newC.getContext('2d');
         const oldImg = oldC.width > 0 ? oldCtx.getImageData(0, 0, oldC.width, oldC.height) : null;
         const newImg = newC.width > 0 ? newCtx.getImageData(0, 0, newC.width, newC.height) : null;
         const diffImg = ctx.getImageData(0, 0, w, h);
         
-        for (let y = 0; y < h; y++) {
-          for (let x = 0; x < w; x++) {
-            const idx = (y * w + x) * 4;
-            const inOld = oldImg && x < oldC.width && y < oldC.height;
-            const inNew = newImg && x < newC.width && y < newC.height;
-            let isDiff = !inOld || !inNew;
-            
-            if (!isDiff) {
-              const oIdx = (y * oldC.width + x) * 4, nIdx = (y * newC.width + x) * 4;
-              if (Math.abs(oldImg.data[oIdx] - newImg.data[nIdx]) > 30 || 
-                  Math.abs(oldImg.data[oIdx+1] - newImg.data[nIdx+1]) > 30 || 
-                  Math.abs(oldImg.data[oIdx+2] - newImg.data[nIdx+2]) > 30) isDiff = true;
+        // Optimized 1D loop for pixel comparison
+        const len = diffImg.data.length;
+        for (let idx = 0; idx < len; idx += 4) {
+          const pixelIndex = idx / 4;
+          const x = pixelIndex % w;
+          const y = Math.floor(pixelIndex / w);
+          
+          const inOld = oldImg && x < oldC.width && y < oldC.height;
+          const inNew = newImg && x < newC.width && y < newC.height;
+          let isDiff = !inOld || !inNew;
+          
+          if (!isDiff) {
+            const oIdx = (y * oldC.width + x) * 4;
+            const nIdx = (y * newC.width + x) * 4;
+            if (Math.abs(oldImg.data[oIdx] - newImg.data[nIdx]) > 30 || 
+                Math.abs(oldImg.data[oIdx+1] - newImg.data[nIdx+1]) > 30 || 
+                Math.abs(oldImg.data[oIdx+2] - newImg.data[nIdx+2]) > 30) {
+              isDiff = true;
             }
-            if (isDiff) { diffImg.data[idx] = 255; diffImg.data[idx+1] = 0; diffImg.data[idx+2] = 255; diffImg.data[idx+3] = 200; } // Magenta highlight
+          }
+          if (isDiff) { 
+            diffImg.data[idx] = 255; diffImg.data[idx+1] = 0; diffImg.data[idx+2] = 255; diffImg.data[idx+3] = 180; 
           }
         }
         ctx.putImageData(diffImg, 0, 0);
-        diffCanvases.push(diffC);
+        
+        // Progressive rendering: append immediately to save memory and show progress
+        diffC.style.maxWidth = '100%'; diffC.style.border = '1px solid var(--border)'; diffC.style.marginBottom = '10px'; diffC.style.background = '#fff';
+        container.appendChild(diffC);
+        
+        // YIELD TO MAIN THREAD: Prevents UI freeze on 100+ page docs
+        await new Promise(resolve => setTimeout(resolve, 0));
       }
-      return diffCanvases;
     }
 
     async function runComparison() {
@@ -203,13 +261,17 @@
       const compView = document.getElementById('tab-comparison'); compView.innerHTML = '';
       
       if (oldP.type === 'pdf' && newP.type === 'pdf') {
-        const canvases = await comparePdfs(oldP.data, newP.data);
-        canvases.forEach(c => { c.style.maxWidth = '100%'; c.style.border = '1px solid var(--border)'; c.style.marginBottom = '10px'; c.style.background = '#fff'; compView.appendChild(c); });
+        await comparePdfs(oldP.data, newP.data, compView);
       } else {
+        progressText.textContent = 'Comparing text content...';
+        progressFill.style.width = '50%';
+        await new Promise(resolve => setTimeout(resolve, 0)); // Yield
+        
         const diff = Diff.diffLines(oldP.content, newP.content);
         let html = '<div class="diff-line">';
         diff.forEach(p => { html += `<span class="${p.added ? 'added' : p.removed ? 'removed' : ''}">${escapeHtml(p.value)}</span>`; });
         compView.innerHTML = html + '</div>';
+        progressFill.style.width = '100%';
       }
       updatePreview('tab-old-preview', oldP); updatePreview('tab-new-preview', newP);
     }
